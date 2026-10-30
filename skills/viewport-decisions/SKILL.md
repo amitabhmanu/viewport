@@ -16,7 +16,8 @@ Log a choice when **both** are true:
 
 Typical decisions:
 
-- A new component, or moving responsibility from one component to another
+- Where a new capability lives: a new component, or which existing component takes it on (log this even when the answer is "in the existing one")
+- Moving responsibility from one component to another
 - A new dependency between components, and whether it is a direct call, a queue or shared data
 - Where data lives, its shape when it is stored or sent, and who owns it
 - A protocol, API shape or error contract other code relies on
@@ -25,7 +26,7 @@ Typical decisions:
 
 Not decisions: names of local variables, formatting, which loop to write, fixing a typo, following a pattern the code already uses everywhere. If the code base already settled it, follow it and do not log it.
 
-Aim for roughly one decision per meaningful feature. Ten for a small change is noise; none for a new component is a gap.
+Aim for one decision per question: "where shipping lives" and "how shipping sends email" are two entries, not one. Most features raise one to three. Ten for a small change is noise; none for a new component is a gap.
 
 ## The record
 

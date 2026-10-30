@@ -121,4 +121,4 @@ export type { TsImport, TsPaths } from "./typescript.js";
 export { extractPythonImports, resolvePythonImport } from "./python.js";
 export type { RawImport } from "./python.js";
 export { coverage, listSources } from "./sources.js";
-export { checkFreshness, fingerprintFiles, filesByComponent, headCommit } from "./freshness.js";
+export { checkFreshness, fingerprintFiles, filesByComponent, headCommit, uncommittedFiles } from "./freshness.js";

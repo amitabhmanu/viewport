@@ -7,10 +7,8 @@ import {
   DependencyMode,
   EngageError,
   LedgerError,
-  ModelEdge,
   ModelEditError,
   ModelGraph,
-  ModelNode,
   QueryError,
   Reversibility,
   SyncState,
@@ -228,10 +226,11 @@ export function createServer(root: string): McpServer {
     "model_upsert",
     {
       description:
-        "Adds or replaces nodes (by id) and edges (by kind, from and to), then validates the whole model, verifies it against the code and saves it. Returns what verification found. List components you re-checked without changing in `reviewed` to mark them fresh.",
+        "Adds or replaces nodes (by id) and edges (by kind, from and to), then validates the whole model, verifies it against the code and saves it. Returns what verification found. Shapes are in the viewport-modeling skill; a component is {kind:'component', id:'app.x', name, role, paths:[globs]} and a dependency {kind:'depends_on', from, to, mode:'sync'|'async'|'data'}.",
       inputSchema: {
-        nodes: z.array(ModelNode).default([]),
-        edges: z.array(ModelEdge).default([]),
+        // Loose here and validated in mergeIntoModel: the full schema would cost every request ~1k tokens.
+        nodes: z.array(z.record(z.string(), z.unknown())).default([]),
+        edges: z.array(z.record(z.string(), z.unknown())).default([]),
         reviewed: z.array(z.string()).default([]).describe("Component ids re-checked against the code without changes"),
       },
       annotations: { ...write, idempotentHint: true },

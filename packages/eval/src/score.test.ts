@@ -1,0 +1,96 @@
+import type { Decision } from "@viewport/core";
+import { describe, expect, it } from "vitest";
+import { type RunScore, gate, leftoverFindings, matchDecisions, median, totalTokens } from "./score.js";
+import { TASKS } from "./tasks.js";
+
+const decision = (id: string, title: string, chosen = "A", why = "because"): Decision => ({
+  id,
+  at: "2026-10-30T10:00:00.000Z",
+  title,
+  options: [
+    { name: "A", tradeoff: "one" },
+    { name: "B", tradeoff: "two" },
+  ],
+  chosen,
+  why,
+  reversibility: "easy",
+  blastRadius: 1,
+  affects: [],
+  assumptions: [],
+});
+
+describe("matchDecisions", () => {
+  it("finds the logged decision covering each expected one", () => {
+    const expected = TASKS.find((t) => t.id === "ts-sharing")!.expected;
+    const ledger = [decision("D-001", "Where sharing logic lives: a separate module"), decision("D-002", "How shares are stored: a list on each note")];
+    expect(matchDecisions(expected, ledger).map((m) => m.matchedBy)).toEqual(["D-002", "D-001"]);
+  });
+
+  it("lets one entry that records two choices cover both", () => {
+    const expected = TASKS.find((t) => t.id === "py-shipping")!.expected;
+    const ledger = [decision("D-001", "Email client lives in notifications; sent on queue dispatch")];
+    expect(matchDecisions(expected, ledger).map((m) => m.matchedBy)).toEqual(["D-001", "D-001"]);
+  });
+
+  it("leaves an expected decision unmatched when nothing covers it", () => {
+    const expected = TASKS.find((t) => t.id === "py-refunds")!.expected;
+    expect(matchDecisions(expected, [decision("D-001", "Rename a variable")])).toEqual([{ expected: expected[0]!.id }]);
+  });
+});
+
+describe("leftoverFindings and totalTokens", () => {
+  it("lists every kind of finding", () => {
+    const left = leftoverFindings({
+      scope: "full",
+      files: 3,
+      unclaimed: ["a.py"],
+      doubleClaimed: [],
+      missingDependencies: [{ from: "x", to: "y", evidence: [] }],
+      unsupportedEdges: [],
+      staleComponents: ["z"],
+      unknownFreshness: [],
+      notes: [],
+      durationMs: 1,
+    });
+    expect(left).toEqual(["unclaimed a.py", "missing x -> y", "changed since modeled z"]);
+  });
+
+  it("sums tokens over every model", () => {
+    expect(
+      totalTokens({ modelUsage: { a: { inputTokens: 1, outputTokens: 2, cacheReadInputTokens: 3, cacheCreationInputTokens: 4 }, b: { outputTokens: 10 } } }),
+    ).toBe(20);
+    expect(median([5, 1, 3])).toBe(3);
+    expect(median([4, 1, 3, 2])).toBe(2.5);
+  });
+});
+
+describe("gate", () => {
+  const run = (over: Partial<RunScore>): RunScore => ({
+    task: "t",
+    ok: true,
+    decisions: [{ expected: "e", matchedBy: "D-001" }],
+    logged: 1,
+    leftover: [],
+    hookMs: [150, 200],
+    tokens: 110,
+    costUsd: 0.1,
+    baselineTokens: 100,
+    ...over,
+  });
+
+  it("passes when every threshold is met", () => {
+    expect(gate([run({})]).pass).toBe(true);
+  });
+
+  it("fails on leftover findings, missed decisions, slow hooks or token overhead", () => {
+    expect(gate([run({ leftover: ["unclaimed a.py"] })]).pass).toBe(false);
+    expect(gate([run({ decisions: [{ expected: "e" }] })]).pass).toBe(false);
+    expect(gate([run({ hookMs: [400, 500] })]).pass).toBe(false);
+    expect(gate([run({ tokens: 200 })]).checks.find((c) => c.name === "plugin token overhead")?.pass).toBe(false);
+  });
+
+  it("skips the overhead check without a baseline", () => {
+    const { baselineTokens: _b, ...noBaseline } = run({});
+    expect(gate([noBaseline]).checks.map((c) => c.name)).not.toContain("plugin token overhead");
+  });
+});

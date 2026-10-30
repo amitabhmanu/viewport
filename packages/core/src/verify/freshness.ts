@@ -75,6 +75,27 @@ export async function checkFreshness(root: string, model: Model, owner: Map<stri
 }
 
 /** Current HEAD commit, or undefined outside a git work tree. */
+/**
+ * Files that differ from HEAD, untracked ones included, as repo-relative paths. Catches
+ * edits made by any means, such as shell commands. Empty outside a git repo.
+ */
+export async function uncommittedFiles(root: string): Promise<string[]> {
+  try {
+    const { stdout } = await run("git", ["status", "--porcelain", "-z", "--untracked-files=all"], { cwd: root, maxBuffer: 16 * 1024 * 1024 });
+    const entries = stdout.split("\0").filter((e) => e !== "");
+    const files: string[] = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]!;
+      files.push(entry.slice(3));
+      // A rename is followed by its old path, which no longer exists.
+      if (entry[0] === "R" || entry[0] === "C") i++;
+    }
+    return files;
+  } catch {
+    return [];
+  }
+}
+
 export async function headCommit(root: string): Promise<string | undefined> {
   try {
     return await git(root, ["rev-parse", "HEAD"]);
