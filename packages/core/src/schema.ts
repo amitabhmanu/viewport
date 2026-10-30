@@ -205,5 +205,11 @@ export const Config = z.object({
   sources: z.array(z.string().min(1)).min(1),
   ignore: z.array(z.string().min(1)).default([]),
   languages: z.array(z.enum(["python", "typescript"])).min(1),
+  python: z
+    .object({
+      /** Directories, relative to the repo root, that absolute imports resolve from. */
+      roots: z.array(z.string().min(1)).min(1).default(["src", "."]),
+    })
+    .default({ roots: ["src", "."] }),
 });
 export type Config = z.infer<typeof Config>;
