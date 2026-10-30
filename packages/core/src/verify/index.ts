@@ -2,7 +2,9 @@ import { join } from "node:path";
 import { viewportPaths } from "../paths.js";
 import type { Config, Model, ModelEdge, ModelNode } from "../schema.js";
 import { edgeKey } from "../schema.js";
-import { type ComponentDependency, componentDependencies, diffDependencies } from "./dependencies.js";
+import { type ComponentDependency, type ImportResolver, componentDependencies, diffDependencies } from "./dependencies.js";
+import { resolvePythonImport } from "./python.js";
+import { readTsPaths, resolveTsImport } from "./typescript.js";
 import { checkFreshness } from "./freshness.js";
 import { scanImports } from "./import-cache.js";
 import { coverage, listSources } from "./sources.js";
@@ -42,7 +44,12 @@ export async function verify(root: string, model: Model, config: Config, options
   const cov = coverage(all, model);
   const subjectSet = new Set(subject);
   const imports = await scanImports(root, subject, join(paths.localDir, "imports.json"));
-  const observed = componentDependencies(imports, cov.owner, allSet, config.python.roots);
+  const tsPaths = config.languages.includes("typescript") ? await readTsPaths(root, config.typescript.tsconfig) : { paths: [] };
+  const resolve: ImportResolver = (file, found, i) =>
+    found.lang === "python"
+      ? resolvePythonImport(found.imports[i]!, file, allSet, config.python.roots)
+      : resolveTsImport(found.imports[i]!.specifier, file, allSet, tsPaths);
+  const observed = componentDependencies(imports, cov.owner, resolve);
   const diff = diffDependencies(model, observed);
 
   const report: VerificationReport = {
@@ -57,7 +64,6 @@ export async function verify(root: string, model: Model, config: Config, options
     notes: [],
     durationMs: 0,
   };
-  if (!config.languages.includes("python")) report.notes.push("only Python imports are scanned so far");
   if (!incremental) {
     const fresh = await checkFreshness(root, model, cov.owner);
     report.staleComponents = fresh.stale;
@@ -106,7 +112,9 @@ export function applyReport(model: Model, report: VerificationReport): Model {
 }
 
 export { componentDependencies, diffDependencies } from "./dependencies.js";
-export type { ComponentDependency, DependencyDiff, ImportEvidence } from "./dependencies.js";
+export type { ComponentDependency, DependencyDiff, ImportEvidence, ImportResolver } from "./dependencies.js";
+export { extractTsImports, readTsPaths, resolveTsImport } from "./typescript.js";
+export type { TsImport, TsPaths } from "./typescript.js";
 export { extractPythonImports, resolvePythonImport } from "./python.js";
 export type { RawImport } from "./python.js";
 export { coverage, listSources } from "./sources.js";

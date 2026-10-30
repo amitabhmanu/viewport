@@ -213,5 +213,11 @@ export const Config = z.object({
       roots: z.array(z.string().min(1)).min(1).default(["src", "."]),
     })
     .default({ roots: ["src", "."] }),
+  typescript: z
+    .object({
+      /** tsconfig, relative to the repo root, whose `baseUrl` and `paths` resolve aliases. */
+      tsconfig: z.string().min(1).default("tsconfig.json"),
+    })
+    .default({ tsconfig: "tsconfig.json" }),
 });
 export type Config = z.infer<typeof Config>;

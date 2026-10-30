@@ -53,6 +53,19 @@
           "minItems": 1,
           "type": "array"
         },
+        "typescript": {
+          "default": {
+            "tsconfig": "tsconfig.json"
+          },
+          "properties": {
+            "tsconfig": {
+              "default": "tsconfig.json",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
         "version": {
           "const": 1,
           "type": "number"

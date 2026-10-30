@@ -1,5 +1,5 @@
 import { type Model, edgeKey } from "../schema.js";
-import { type RawImport, resolvePythonImport } from "./python.js";
+import type { FileImports } from "./import-cache.js";
 
 export interface ImportEvidence {
   file: string;
@@ -13,19 +13,22 @@ export interface ComponentDependency {
   evidence: ImportEvidence[];
 }
 
+/** Turns one parsed import into the repo files it refers to. */
+export type ImportResolver = (file: string, found: FileImports, index: number) => string[];
+
 /** Rolls file-level imports up to dependencies between the components that own the files. */
 export function componentDependencies(
-  imports: Map<string, RawImport[]>,
+  imports: Map<string, FileImports>,
   owner: Map<string, string>,
-  allFiles: ReadonlySet<string>,
-  roots: string[],
+  resolve: ImportResolver,
 ): ComponentDependency[] {
   const deps = new Map<string, ComponentDependency>();
-  for (const [file, raws] of imports) {
+  for (const [file, found] of imports) {
     const from = owner.get(file);
     if (!from) continue;
-    for (const raw of raws) {
-      for (const target of resolvePythonImport(raw, file, allFiles, roots)) {
+    for (let i = 0; i < found.imports.length; i++) {
+      const raw = found.imports[i]!;
+      for (const target of resolve(file, found, i)) {
         const to = owner.get(target);
         if (!to || to === from) continue;
         const key = `${from}->${to}`;

@@ -61,6 +61,15 @@ describe("viewport CLI", () => {
     expect((await readFile(join(root, ".gitignore"), "utf8")).match(/\.viewport\/local\//g)).toHaveLength(1);
   });
 
+  it("init detects TypeScript sources", async () => {
+    const ts = await tempDir();
+    await cp(fileURLToPath(new URL("../../../../fixtures/ts-notes", import.meta.url)), ts, { recursive: true });
+    const out: string[] = [];
+    const code = await runCli(["init", "--root", ts], { cwd: root, out: (s) => out.push(s), err: () => {}, readStdin: async () => "" });
+    expect(code).toBe(0);
+    expect(out.join("\n")).toContain("Languages: typescript. Sources: src/**/*.{ts,tsx} (5 files)");
+  });
+
   it("asks for init before anything else", async () => {
     const r = await cli(["status"]);
     expect(r.code).toBe(1);
