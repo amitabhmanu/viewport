@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EngageError, listPredictions, raiseFlag, recordPrediction, resolveFlag, unresolvedFlags, writeQuizItems } from "./engage.js";
+import { EngageError, listFlags, listPredictions, raiseFlag, recordPrediction, resolveFlag, unresolvedFlags, writeQuizItems } from "./engage.js";
 import { openState } from "./state.js";
 
 describe("flags", () => {
@@ -13,6 +13,10 @@ describe("flags", () => {
     expect(resolved).toMatchObject({ status: "resolved", answer: "Logged a replacement", decisionId: "D-002" });
     expect(unresolvedFlags(db).map((f) => f.subject)).toEqual(["app.orders"]);
     expect(() => resolveFlag(db, 99, "x")).toThrow(EngageError);
+    expect(listFlags(db).map((f) => [f.subject, f.status, f.resolvedAt !== undefined])).toEqual([
+      ["app.orders", "pending", false],
+      ["D-001", "resolved", true],
+    ]);
   });
 });
 

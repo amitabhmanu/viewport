@@ -1,9 +1,10 @@
-import type { Decision, Prediction } from "@viewport/core";
+import type { Decision, Flag, Prediction } from "@viewport/core";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { rank } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
+import { FlagBox, useFlags } from "./Flags.js";
 import { PredictPrompt, PredictionResult } from "./Predict.js";
 
 const FILTERS = [
@@ -20,6 +21,7 @@ export function LedgerPage() {
   const live = useLive();
   const { data, error } = useLoad(api.ledger, [live.ledger]);
   const predictions = useLoad(api.predictions, [live.state]);
+  const flags = useFlags();
   const { bySubject } = useChanges();
   const [filter, setFilter] = useState<Filter>("all");
   const scrolled = useRef(false);
@@ -55,7 +57,7 @@ export function LedgerPage() {
       {data.length > 0 && shown.length === 0 && <p className="muted">No decisions match this filter.</p>}
       <ol className="ledger">
         {shown.map((d) => (
-          <DecisionCard key={d.id} d={d} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} prediction={guessed.get(d.id)} />
+          <DecisionCard key={d.id} d={d} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} prediction={guessed.get(d.id)} flags={flags.get(d.id) ?? []} />
         ))}
       </ol>
     </section>
@@ -66,7 +68,19 @@ export function LedgerPage() {
  * Every field is shown once the developer has guessed or skipped; until then the
  * choice and the reasons stay hidden. Clicking a new decision marks it seen.
  */
-function DecisionCard({ d, isNew, replaced, prediction }: { d: Decision; isNew: boolean; replaced: boolean; prediction: Prediction | undefined }) {
+function DecisionCard({
+  d,
+  isNew,
+  replaced,
+  prediction,
+  flags,
+}: {
+  d: Decision;
+  isNew: boolean;
+  replaced: boolean;
+  prediction: Prediction | undefined;
+  flags: Flag[];
+}) {
   return (
     <li className={`decision${isNew ? " fresh" : ""}${replaced ? " replaced" : ""}`} id={d.id} onClick={() => isNew && markSeen([d.id])}>
       <div className="decision-head">
@@ -88,6 +102,7 @@ function DecisionCard({ d, isNew, replaced, prediction }: { d: Decision; isNew: 
             <strong>Chose {d.chosen}.</strong> {d.why}
           </p>
           <DecisionBody d={d} />
+          <FlagBox subject={d.id} flags={flags} placeholder={`Why ${d.chosen}?`} collapsed={flags.length === 0} />
         </>
       )}
     </li>

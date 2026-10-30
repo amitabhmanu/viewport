@@ -164,25 +164,50 @@ function editedThisSession(state: DatabaseSync, session: string | undefined): Se
 }
 
 /**
- * Before Claude finishes: if this session's work left the model behind the code,
- * block once and say what to update. Work means files edited through Claude's edit
- * tools plus anything git shows as changed, so shell edits count too. Findings in
- * other files are left for /viewport:status, so an old gap does not hold up every
- * session. A component whose code changed without new files or dependencies is
- * marked reviewed here rather than costing Claude another round trip.
+ * Before Claude finishes: if this session's work left the model behind the code, or
+ * the developer has flagged something Claude has not answered, block once and say
+ * what to do. Work means files edited through Claude's edit tools plus anything git
+ * shows as changed, so shell edits count too. Findings in other files are left for
+ * /viewport:status, so an old gap does not hold up every session. A component whose
+ * code changed without new files or dependencies is marked reviewed here rather than
+ * costing Claude another round trip.
  */
 export async function stop(root: string, input: HookInput): Promise<HookOutput> {
   if (input.stop_hook_active) return undefined;
   const paths = viewportPaths(root);
   const state = openState(paths.stateDb);
   const edited = editedThisSession(state, input.session_id);
+  const flags = flagsToAnswer(state);
   state.close();
   for (const f of await uncommittedFiles(root)) if (!f.startsWith(`${VIEWPORT_DIR}/`)) edited.add(f);
-  if (edited.size === 0) return undefined;
 
+  const lines = await modelGaps(root, edited);
+  if (flags.length > 0) {
+    lines.push(
+      `The developer is waiting on ${flags.length === 1 ? "an answer" : "answers"}: ${flags.map((f) => `flag ${f.id} on ${f.subject}: "${f.text}"`).join("; ")}. Answer each with flags_resolve (log a new decision first if it changes your plan).`,
+    );
+  }
+  return lines.length > 0 ? { decision: "block", reason: lines.join("\n") } : undefined;
+}
+
+/**
+ * Flags Claude should answer before finishing: ones already passed on during this
+ * work and any raised since, oldest first, at most a few. Raised ones count as delivered now.
+ */
+function flagsToAnswer(state: DatabaseSync) {
+  const flags = unresolvedFlags(state).slice(0, FLAGS_PER_EDIT);
+  const mark = state.prepare("UPDATE flags SET status = 'delivered' WHERE id = ? AND status = 'pending'");
+  for (const f of flags) mark.run(f.id);
+  return flags;
+}
+
+/** What the session's edits left the model missing, as instructions; empty when it is in step. */
+async function modelGaps(root: string, edited: Set<string>): Promise<string[]> {
+  if (edited.size === 0) return [];
+  const paths = viewportPaths(root);
   const config = await readConfig(paths.config);
   const model = await readModel(paths.model);
-  if (!model.nodes.some((n) => n.kind === "component")) return undefined;
+  if (!model.nodes.some((n) => n.kind === "component")) return [];
   const report = await verify(root, model, config);
   const owner = coverage(await listSources(root, config), model).owner;
   const touched = new Set([...edited].map((f) => owner.get(f)).filter((c): c is string => c !== undefined));
@@ -193,7 +218,7 @@ export async function stop(root: string, input: HookInput): Promise<HookOutput> 
   if (unclaimed.length === 0 && missing.length === 0 && unsupported.length === 0) {
     const reviewed = report.staleComponents.filter((c) => touched.has(c));
     if (reviewed.length > 0) await writeModelFromAgent(root, model, reviewed);
-    return undefined;
+    return [];
   }
 
   const lines = ["Before you finish, bring the Viewport model up to date with what you just built:"];
@@ -205,7 +230,7 @@ export async function stop(root: string, input: HookInput): Promise<HookOutput> 
   lines.push(
     "Use model_upsert (and model_remove for edges that are gone). List components whose code changed but whose role still fits in reviewed. If where a new capability lives, or a new dependency, was a real choice, log it with ledger_append too.",
   );
-  return { decision: "block", reason: lines.join("\n") };
+  return lines;
 }
 
 /** After the modeler finishes: verify the whole model and save its sync states as a new revision. */

@@ -16,6 +16,7 @@ import {
   addPin,
   changesSince,
   get,
+  listFlags,
   listPins,
   listPredictions,
   logEvent,
@@ -156,14 +157,18 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       case "GET /api/verify":
         return verify(root, await readModel(paths.model), await readConfig(paths.config));
       case "GET /api/flags":
-        return withState((db) => unresolvedFlags(db));
+        return withState((db) => (q.get("all") === "1" ? listFlags(db) : unresolvedFlags(db)));
       case "POST /api/flags": {
         const body = JSON.parse(await readBody(req)) as { subject?: unknown; text?: unknown };
         if (typeof body.subject !== "string" || typeof body.text !== "string" || body.text.trim() === "") {
           throw new HttpError(400, "a flag needs a subject and some text");
         }
         const { subject, text } = body;
-        return withState((db) => raiseFlag(db, subject, text.trim()));
+        return withState((db) => {
+          const flag = raiseFlag(db, subject, text.trim());
+          logEvent(db, "flag", subject, { id: flag.id });
+          return flag;
+        });
       }
       case "GET /api/changes": {
         const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);

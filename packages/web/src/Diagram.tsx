@@ -15,10 +15,13 @@ interface Props {
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
   onStub: (id: string) => void;
+  /** Selecting an arrow, by its view edge key. */
+  onSelectEdge?: (key: string) => void;
+  selectedEdge?: string | undefined;
 }
 
 /** One sub-view as an SVG diagram: boxes for elements, dashed boxes for stubs, arrows for dependencies. */
-export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub }: Props) {
+export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge }: Props) {
   const [laid, setLaid] = useState<Layout>();
   useEffect(() => {
     let live = true;
@@ -40,14 +43,28 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         const edge = part.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === r.id);
         const mode = liftedMode(edge?.sources ?? [], modes);
         const fresh = (edge?.sources ?? []).some((k) => changed.has(k));
+        const points = r.points.map((p) => `${p.x},${p.y}`).join(" ");
+        const lit = r.id === selectedEdge || (selected !== undefined && (r.from === selected || r.to === selected));
         return (
-          <polyline
-            key={r.id}
-            data-edge={r.id}
-            className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${selected !== undefined && (r.from === selected || r.to === selected) ? " lit" : ""}`}
-            points={r.points.map((p) => `${p.x},${p.y}`).join(" ")}
-            markerEnd="url(#arrow)"
-          />
+          <g key={r.id}>
+            <polyline
+              data-edge={r.id}
+              className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${lit ? " lit" : ""}`}
+              points={points}
+              markerEnd="url(#arrow)"
+            />
+            {onSelectEdge && (
+              <polyline
+                className="edge-hit"
+                points={points}
+                role="button"
+                tabIndex={0}
+                aria-label={`Dependency ${nodes.get(r.from)?.name ?? r.from} to ${nodes.get(r.to)?.name ?? r.to}`}
+                onClick={() => onSelectEdge(r.id)}
+                onKeyDown={(e) => e.key === "Enter" && onSelectEdge(r.id)}
+              />
+            )}
+          </g>
         );
       })}
       {laid.boxes.map((b) => {

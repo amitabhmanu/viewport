@@ -47,6 +47,7 @@ export const api = {
   view: (name: string, level: Level) => call<SplitView[]>(`/api/view?${q({ name, level })}`),
   ledger: () => call<Decision[]>("/api/ledger"),
   flags: () => call<Flag[]>("/api/flags"),
+  allFlags: () => call<Flag[]>("/api/flags?all=1"),
   changes: () => call<ChangesSince>("/api/changes"),
   seen: (subjects: string[]) => call<{ ok: true }>("/api/seen", { method: "POST", body: JSON.stringify({ subjects }) }),
   seenAll: () => call<{ ok: true }>("/api/seen", { method: "POST", body: JSON.stringify({ all: true }) }),

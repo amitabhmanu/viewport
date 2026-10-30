@@ -24,10 +24,11 @@ export function useRoute(): [Route, (to: string) => void] {
 }
 
 /** A map URL. Unset fields are left out so the defaults apply. */
-export function mapHref(view: string, opts: { level?: string; focus?: string | undefined; part?: number | undefined } = {}): string {
+export function mapHref(view: string, opts: { level?: string; focus?: string | undefined; part?: number | undefined; edge?: string | undefined } = {}): string {
   const p = new URLSearchParams({ view });
   if (opts.level && opts.level !== "medium") p.set("level", opts.level);
   if (opts.focus) p.set("focus", opts.focus);
+  if (opts.edge) p.set("edge", opts.edge);
   if (opts.part !== undefined && opts.part > 1) p.set("part", String(opts.part));
   return `/map?${p.toString()}`;
 }

@@ -165,3 +165,14 @@ a.button:hover { border-color: var(--accent); }
 .result { margin: 8px 0 0; font-weight: 500; }
 .result.right { color: #22a06b; }
 .result.wrong { color: var(--stale); }
+
+.flagbox { margin-top: 8px; }
+.flag-list { list-style: none; padding: 0; margin: 0 0 8px; }
+.flag { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.flag p { margin: 0; }
+.flag .a { margin-top: 4px; padding-left: 10px; border-left: 2px solid var(--accent); }
+.flag.resolved .tag { border-color: #22a06b; color: #22a06b; }
+.flag-form { display: flex; gap: 6px; }
+.flag-form input { flex: 1; min-width: 0; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.edge-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; pointer-events: stroke; outline: none; }
+.edge-hit:hover, .edge-hit:focus-visible { stroke: var(--accent); opacity: .25; }
