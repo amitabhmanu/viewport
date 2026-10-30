@@ -10,7 +10,10 @@ import {
   ModelGraph,
   QueryError,
   type ViewName,
+  changesSince,
   get,
+  markAllSeen,
+  markSeen,
   openState,
   raiseFlag,
   readConfig,
@@ -127,6 +130,29 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
         }
         const { subject, text } = body;
         return withState((db) => raiseFlag(db, subject, text.trim()));
+      }
+      case "GET /api/changes": {
+        const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+        const db = openState(paths.stateDb);
+        try {
+          return await changesSince(paths.model, db, model, ledger);
+        } finally {
+          db.close();
+        }
+      }
+      case "POST /api/seen": {
+        const body = JSON.parse(await readBody(req)) as { subjects?: unknown; all?: unknown };
+        const { revision } = await readModel(paths.model);
+        if (body.all === true) {
+          withState((db) => markAllSeen(db, revision));
+          return { ok: true };
+        }
+        if (!Array.isArray(body.subjects) || !body.subjects.every((s) => typeof s === "string")) {
+          throw new HttpError(400, "send the subjects you opened, or all: true");
+        }
+        const subjects = body.subjects as string[];
+        withState((db) => markSeen(db, subjects, revision));
+        return { ok: true };
       }
     }
     throw new HttpError(404, `no route ${req.method} ${url.pathname}`);

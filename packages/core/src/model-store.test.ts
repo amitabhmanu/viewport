@@ -54,6 +54,6 @@ describe("model store", () => {
     bad.edges.push({ kind: "uses", from: "customer", to: "nowhere", source: "agent", sync: "unverified" });
     await expect(writeModel(path, bad)).rejects.toThrow();
     expect(await readFile(path, "utf8")).toBe(before);
-    expect(await readdir(dir)).toEqual(["model.json"]);
+    expect((await readdir(dir)).sort()).toEqual(["local", "model.json"]);
   });
 });

@@ -1,48 +1,116 @@
 import type { Decision } from "@viewport/core";
+import { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
+import { markSeen, useChanges } from "./changes.js";
+import { rank } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
+
+const FILTERS = [
+  ["all", "All"],
+  ["one-way", "One-way"],
+  ["costly", "Costly"],
+  ["easy", "Easy"],
+] as const;
+type Filter = (typeof FILTERS)[number][0];
+
+const REVERSIBILITY: Record<Decision["reversibility"], string> = { "one-way": "One-way", costly: "Costly to undo", easy: "Easy to undo" };
 
 export function LedgerPage() {
   const live = useLive();
   const { data, error } = useLoad(api.ledger, [live.ledger]);
-  if (error) return <p className="error">{error}</p>;
+  const { bySubject } = useChanges();
+  const [filter, setFilter] = useState<Filter>("all");
+  const scrolled = useRef(false);
+
+  // Arriving from a link to one decision: bring it into view once.
+  useEffect(() => {
+    const target = window.location.hash.slice(1);
+    if (scrolled.current || !data || !target) return;
+    scrolled.current = true;
+    document.getElementById(target)?.scrollIntoView({ block: "center" });
+  }, [data]);
+
+  if (error) return <p className="error page">{error}</p>;
   if (!data) return <p className="muted page">Loading…</p>;
-  const newest = [...data].reverse();
+  const replaced = new Set(data.flatMap((d) => (d.supersedes ? [d.supersedes] : [])));
+  const shown = rank(data).filter((d) => filter === "all" || d.reversibility === filter);
+
   return (
     <section className="page narrow">
-      <h1>Ledger</h1>
-      {newest.length === 0 && <p className="muted">No decisions yet. The agent records one whenever it picks between real options.</p>}
+      <div className="section-head">
+        <h1>Ledger</h1>
+        <div className="levels" role="radiogroup" aria-label="Reversibility">
+          {FILTERS.map(([value, label]) => (
+            <button key={value} role="radio" aria-checked={filter === value} onClick={() => setFilter(value)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="muted">Ranked by how many components each decision touches.</p>
+      {data.length === 0 && <p className="muted">No decisions yet. The agent records one whenever it picks between real options.</p>}
+      {data.length > 0 && shown.length === 0 && <p className="muted">No decisions match this filter.</p>}
       <ol className="ledger">
-        {newest.map((d) => (
-          <DecisionCard key={d.id} d={d} />
+        {shown.map((d) => (
+          <DecisionCard key={d.id} d={d} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} />
         ))}
       </ol>
     </section>
   );
 }
 
-function DecisionCard({ d }: { d: Decision }) {
+/** Every field is shown for now. Clicking a new decision marks it seen. */
+function DecisionCard({ d, isNew, replaced }: { d: Decision; isNew: boolean; replaced: boolean }) {
   return (
-    <li className="decision" id={d.id}>
+    <li className={`decision${isNew ? " fresh" : ""}${replaced ? " replaced" : ""}`} id={d.id} onClick={() => isNew && markSeen([d.id])}>
       <div className="decision-head">
         <span className="id">{d.id}</span>
         <h2>{d.title}</h2>
-        <span className={`tag ${d.reversibility}`}>{d.reversibility === "one-way" ? "One-way" : "Reversible"}</span>
+        {isNew && <span className="tag fresh">New</span>}
+        {replaced && <span className="tag">Replaced</span>}
+        <span className={`tag ${d.reversibility}`}>{REVERSIBILITY[d.reversibility]}</span>
+        <span className="radius" title="Components this decision touches">
+          {d.blastRadius}
+        </span>
       </div>
       <p>
         <strong>Chose {d.chosen}.</strong> {d.why}
       </p>
-      <p className="muted">
-        Touches {d.blastRadius} component{d.blastRadius === 1 ? "" : "s"}
-        {d.supersedes ? ` · replaces ${d.supersedes}` : ""} · {new Date(d.at).toLocaleString()}
-      </p>
-      {d.assumptions.length > 0 && (
-        <ul className="assumptions">
-          {d.assumptions.map((a) => (
-            <li key={a}>Assumed: {a}</li>
+      <div className="decision-body">
+        <h3>Options</h3>
+        <ul className="options">
+          {d.options.map((o) => (
+            <li key={o.name} className={o.name === d.chosen ? "chosen" : ""}>
+              <strong>{o.name}</strong>: {o.tradeoff}
+            </li>
           ))}
         </ul>
-      )}
+        {d.affects.length > 0 && (
+          <>
+            <h3>Affects</h3>
+            <p>
+              {d.affects.map((a) => (
+                <code key={a}>{a} </code>
+              ))}
+            </p>
+          </>
+        )}
+        {d.assumptions.length > 0 && (
+          <>
+            <h3>Assumptions not yet confirmed</h3>
+            <ul className="assumptions">
+              {d.assumptions.map((a) => (
+                <li key={a}>{a}</li>
+              ))}
+            </ul>
+          </>
+        )}
+        <p className="muted">
+          {new Date(d.at).toLocaleString()}
+          {d.commit ? ` · ${d.commit.slice(0, 8)}` : ""}
+          {d.supersedes ? ` · replaces ${d.supersedes}` : ""}
+        </p>
+      </div>
     </li>
   );
 }

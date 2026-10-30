@@ -70,6 +70,17 @@ describe("API", () => {
     expect((await api("/api/nothing")).status).toBe(404);
   });
 
+  it("lists what changed since the viewer last looked, until each item is opened", async () => {
+    expect(await (await api("/api/changes")).json()).toMatchObject({ since: 1, changes: [] });
+    await writeModelFromAgent(root, { ...SHOP, edges: SHOP.edges.filter((e) => !(e.from === "app.storage" && e.to === "app.orders")) });
+    const changes = (await (await api("/api/changes")).json()) as { changes: { subject: string; change: string }[] };
+    expect(changes.changes).toEqual([expect.objectContaining({ subject: "depends_on:app.storage->app.orders", change: "removed" })]);
+    await api("/api/seen", { method: "POST", body: JSON.stringify({ subjects: ["depends_on:app.storage->app.orders"] }) });
+    expect(await (await api("/api/changes")).json()).toMatchObject({ since: 2, changes: [] });
+    expect((await api("/api/seen", { method: "POST", body: JSON.stringify({ subjects: "x" }) })).status).toBe(400);
+    expect(await (await api("/api/seen", { method: "POST", body: JSON.stringify({ all: true }) })).json()).toEqual({ ok: true });
+  });
+
   it("stores flags raised from the viewer", async () => {
     const res = await api("/api/flags", { method: "POST", body: JSON.stringify({ subject: "app.orders", text: " why sync? " }) });
     expect(await res.json()).toMatchObject({ subject: "app.orders", text: "why sync?", status: "pending" });

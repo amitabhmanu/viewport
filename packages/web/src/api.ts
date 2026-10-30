@@ -1,4 +1,4 @@
-import type { Decision, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { ChangesSince, Decision, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -47,6 +47,9 @@ export const api = {
   view: (name: string, level: Level) => call<SplitView[]>(`/api/view?${q({ name, level })}`),
   ledger: () => call<Decision[]>("/api/ledger"),
   flags: () => call<Flag[]>("/api/flags"),
+  changes: () => call<ChangesSince>("/api/changes"),
+  seen: (subjects: string[]) => call<{ ok: true }>("/api/seen", { method: "POST", body: JSON.stringify({ subjects }) }),
+  seenAll: () => call<{ ok: true }>("/api/seen", { method: "POST", body: JSON.stringify({ all: true }) }),
   flag: (subject: string, text: string) => call<Flag>("/api/flags", { method: "POST", body: JSON.stringify({ subject, text }) }),
 };
 

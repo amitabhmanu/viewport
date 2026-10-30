@@ -2,7 +2,7 @@ import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { initWorkspace, writeModelFromAgent } from "@viewport/core";
+import { appendDecision, initWorkspace, writeModelFromAgent } from "@viewport/core";
 import { type Daemon, startDaemon } from "@viewport/viewportd";
 import { type Browser, type Page, chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -36,6 +36,8 @@ const SHOP = {
     ].map(([a, b, mode]) => ({ kind: "depends_on", from: `app.${a}`, to: `app.${b}`, mode })),
   ],
 };
+
+const SEARCH = { kind: "component", id: "app.search", name: "search", role: "Finds products", paths: ["src/shop/search/**"] };
 
 let root: string;
 let daemon: Daemon;
@@ -91,10 +93,59 @@ describe("viewer", () => {
     await node("app.orders").waitFor();
     const start = Date.now();
     await writeModelFromAgent(root, {
-      nodes: [...SHOP.nodes, { kind: "component", id: "app.search", name: "search", role: "Finds products", paths: ["src/shop/search/**"] }],
+      nodes: [...SHOP.nodes, SEARCH],
       edges: [...SHOP.edges, { kind: "contains", from: "app", to: "app.search" }],
     });
     await node("app.search").waitFor({ timeout: 3000 });
     expect(Date.now() - start).toBeLessThan(1500);
+  });
+
+  it("lists what changed since the last look and clears an item once opened", async () => {
+    await page.getByRole("link", { name: "Today" }).click();
+    const item = page.locator(".changes li", { hasText: "search" });
+    await item.waitFor();
+    expect(await item.textContent()).toContain("New");
+    await item.getByRole("link").click();
+    await node("app.search").waitFor();
+    expect(page.url()).toContain("focus=app.search");
+    await page.getByRole("link", { name: "Today" }).click();
+    await page.getByText("You are up to date.").waitFor();
+  });
+
+  it("highlights a change on the Map until it is opened", async () => {
+    await writeModelFromAgent(root, {
+      nodes: [...SHOP.nodes.map((n) => (n.id === "app.orders" ? { ...n, role: "Takes and refunds orders" } : n)), SEARCH],
+      edges: [...SHOP.edges, { kind: "contains", from: "app", to: "app.search" }],
+    });
+    await page.goto(`http://127.0.0.1:${daemon.port}/map?view=components:app&level=complex`);
+    await expect.poll(() => node("app.orders").getAttribute("class")).toContain("fresh");
+    await node("app.orders").click();
+    await expect.poll(() => node("app.orders").getAttribute("class")).not.toContain("fresh");
+  });
+
+  it("ranks the ledger by blast radius and filters by reversibility", async () => {
+    const decision = (id: string, title: string, blastRadius: number, reversibility: "easy" | "one-way") => ({
+      id,
+      at: new Date().toISOString(),
+      title,
+      options: [
+        { name: "A", tradeoff: "a" },
+        { name: "B", tradeoff: "b" },
+      ],
+      chosen: "A",
+      why: "because",
+      reversibility,
+      blastRadius,
+    });
+    await appendDecision(join(root, ".viewport", "ledger.jsonl"), decision("D-001", "Small call", 1, "easy"));
+    await appendDecision(join(root, ".viewport", "ledger.jsonl"), decision("D-002", "Big call", 4, "one-way"));
+    await page.getByRole("link", { name: "Ledger" }).click();
+    await expect.poll(() => page.locator(".decision h2").allTextContents()).toEqual(["Big call", "Small call"]);
+    expect(await page.locator(".decision.fresh").count()).toBe(2);
+    await page.getByRole("radio", { name: "Easy" }).click();
+    expect(await page.locator(".decision h2").allTextContents()).toEqual(["Small call"]);
+    await page.locator("#D-001").click();
+    await page.getByRole("radio", { name: "All" }).click();
+    await expect.poll(() => page.locator(".decision.fresh h2").allTextContents()).toEqual(["Big call"]);
   });
 });
