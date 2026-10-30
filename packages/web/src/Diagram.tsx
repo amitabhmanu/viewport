@@ -1,6 +1,6 @@
-import type { Level, ModelNode, SplitView } from "@viewport/core";
+import type { Change, Level, ModelNode, SplitView } from "@viewport/core";
 import { useEffect, useState } from "react";
-import { KIND_LABEL, subtitle } from "./labels.js";
+import { CHANGE_LABEL, KIND_LABEL, subtitle } from "./labels.js";
 import { type Layout, layout, syncMarker } from "./layout.js";
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
   /** Mode of each model depends_on edge, by edge key. */
   modes: Map<string, string>;
   level: Level;
+  /** What changed since the reader last looked, by node id or edge key. */
+  changed: Map<string, Change>;
   selected: string | undefined;
   onSelect: (id: string) => void;
   onOpen: (id: string) => void;
@@ -16,7 +18,7 @@ interface Props {
 }
 
 /** One sub-view as an SVG diagram: boxes for elements, dashed boxes for stubs, arrows for dependencies. */
-export function Diagram({ part, nodes, modes, level, selected, onSelect, onOpen, onStub }: Props) {
+export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub }: Props) {
   const [laid, setLaid] = useState<Layout>();
   useEffect(() => {
     let live = true;
@@ -37,11 +39,12 @@ export function Diagram({ part, nodes, modes, level, selected, onSelect, onOpen,
       {laid.routes.map((r) => {
         const edge = part.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === r.id);
         const mode = liftedMode(edge?.sources ?? [], modes);
+        const fresh = (edge?.sources ?? []).some((k) => changed.has(k));
         return (
           <polyline
             key={r.id}
             data-edge={r.id}
-            className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${selected !== undefined && (r.from === selected || r.to === selected) ? " lit" : ""}`}
+            className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${selected !== undefined && (r.from === selected || r.to === selected) ? " lit" : ""}`}
             points={r.points.map((p) => `${p.x},${p.y}`).join(" ")}
             markerEnd="url(#arrow)"
           />
@@ -52,7 +55,8 @@ export function Diagram({ part, nodes, modes, level, selected, onSelect, onOpen,
         const name = node?.name ?? b.id;
         const marker = b.stub ? undefined : syncMarker(node);
         const target = part.continuesIn[b.id];
-        const cls = ["node", node?.kind ?? "unknown", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? ""].filter(Boolean).join(" ");
+        const change = b.stub ? undefined : changed.get(b.id);
+        const cls = ["node", node?.kind ?? "unknown", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? "", change ? "fresh" : ""].filter(Boolean).join(" ");
         return (
           <g
             key={b.id}
@@ -85,6 +89,11 @@ export function Diagram({ part, nodes, modes, level, selected, onSelect, onOpen,
                   {clip(subtitle(node, level), 30)}
                 </text>
               )
+            )}
+            {change && (
+              <text x={b.width - 12} y={b.height - 10} className="badge" textAnchor="end">
+                {CHANGE_LABEL[change.change]}
+              </text>
             )}
             {marker && (
               <g className="marker" transform={`translate(${b.width - 14},14)`}>

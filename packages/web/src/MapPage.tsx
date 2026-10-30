@@ -1,8 +1,9 @@
-import type { Level, ModelNode } from "@viewport/core";
+import type { Change, Level, ModelNode } from "@viewport/core";
 import { useMemo, useState } from "react";
 import { api } from "./api.js";
+import { markSeen, useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
-import { KIND_LABEL, partShowing, partSummary, subtitle, trail, viewTitle, zoomTarget } from "./labels.js";
+import { CHANGE_LABEL, KIND_LABEL, partShowing, partSummary, seenWith, subtitle, trail, viewTitle, zoomTarget } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { mapHref } from "./router.js";
 
@@ -24,6 +25,18 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
     () => new Map((model.data?.edges ?? []).filter((e) => e.kind === "depends_on").map((e) => [`${e.kind}:${e.from}->${e.to}`, e.mode ?? ""])),
     [model.data],
   );
+
+  const { changes, bySubject } = useChanges();
+  // A container whose components changed shows as changed too, so the reader knows where to look.
+  const changed = useMemo(() => {
+    const out = new Map(bySubject);
+    for (const e of model.data?.edges ?? []) {
+      if (e.kind !== "contains" || out.has(e.from)) continue;
+      const inner = changes.find((c) => c.nodes.includes(e.to));
+      if (inner) out.set(e.from, { ...inner, subject: e.from, change: "changed" } satisfies Change);
+    }
+    return out;
+  }, [bySubject, changes, model.data]);
 
   const error = model.error ?? parts.error;
   if (error) return <p className="error page">{error}</p>;
@@ -95,8 +108,12 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             nodes={nodes}
             modes={modes}
             level={level}
+            changed={changed}
             selected={focus}
-            onSelect={(id) => go(href({ focus: id === focus ? undefined : id }))}
+            onSelect={(id) => {
+              markSeen(seenWith(id, changes));
+              go(href({ focus: id === focus ? undefined : id }));
+            }}
             onOpen={zoom}
             onStub={(id) => void openStub(id)}
           />
@@ -116,13 +133,24 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             </div>
           )}
         </div>
-        {focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} />}
+        {focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} />}
       </div>
     </section>
   );
 }
 
-function NodePanel({ node, nodes, level, onZoom, onPick }: { node: ModelNode; nodes: Map<string, ModelNode>; level: Level; onZoom: (id: string) => void; onPick: (id: string) => void }) {
+function NodePanel({
+  node,
+  nodes,
+  change,
+  level,
+  onZoom,
+  onPick,
+}: {
+  node: ModelNode;
+  nodes: Map<string, ModelNode>;
+  change: Change | undefined;
+  level: Level; onZoom: (id: string) => void; onPick: (id: string) => void }) {
   const live = useLive();
   const detail = useLoad(() => api.node(node.id), [node.id, live.model]);
   const [text, setText] = useState("");
@@ -131,7 +159,9 @@ function NodePanel({ node, nodes, level, onZoom, onPick }: { node: ModelNode; no
   return (
     <aside className="panel" aria-label={node.name}>
       <p className="kind">{KIND_LABEL[node.kind]}</p>
-      <h2>{node.name}</h2>
+      <h2>
+        {node.name} {change && <span className="tag fresh">{CHANGE_LABEL[change.change]}</span>}
+      </h2>
       <p>{subtitle(node, level)}</p>
       {node.kind === "component" && node.sync !== "ok" && (
         <p className="warn">{node.sync === "stale" ? "The code changed since this was modeled." : "Not yet checked against the code."}</p>

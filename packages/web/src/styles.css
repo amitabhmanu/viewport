@@ -117,3 +117,23 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .node.stub .name { font-weight: 500; fill: var(--muted); }
 .marker circle { fill: var(--unverified); }
 .node.stale .marker circle { fill: var(--stale); }
+
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 24px 0 8px; }
+.section-head h1, .section-head h2 { margin: 0; }
+.page > .section-head:first-child { margin-top: 0; }
+.changes { list-style: none; padding: 0; margin: 0; }
+.changes li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.tag.fresh, .tag.added, .tag.changed { border-color: var(--accent); color: var(--accent); }
+.tag.removed { text-decoration: line-through; }
+.decision.fresh { border-color: var(--accent); }
+.decision.replaced { opacity: .65; }
+.decision-head .radius { margin-left: auto; min-width: 28px; text-align: center; font-weight: 600; border-radius: 6px; background: var(--accent-soft); padding: 0 6px; }
+.options { margin: 0; padding-left: 18px; }
+.options .chosen { font-weight: 500; }
+.options .chosen::marker { content: "✓ "; color: var(--accent); }
+.decision h3 { margin-top: 12px; }
+.decision code { margin-right: 6px; }
+.edge.fresh { stroke: var(--accent); stroke-dasharray: none; }
+.edge.fresh.async { stroke-dasharray: 6 4; }
+.node.fresh rect { stroke: var(--accent); stroke-width: 2; }
+.node .badge { fill: var(--accent); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }

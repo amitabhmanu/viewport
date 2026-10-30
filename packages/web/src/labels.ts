@@ -1,4 +1,4 @@
-import type { Level, ModelNode, SplitView } from "@viewport/core";
+import type { Change, Decision, Level, Model, ModelNode, SplitView } from "@viewport/core";
 
 /** The line under a node's name. Simple says what it does; medium adds the technology; complex leads with it. */
 export function subtitle(node: ModelNode, level: Level): string {
@@ -57,4 +57,26 @@ export function partSummary(part: SplitView, nodes: Map<string, ModelNode>): str
   const shown = names.length <= 3 ? names.join(", ") : `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`;
   const onward = Object.keys(part.continuesIn).length;
   return onward > 0 ? `${shown}; ${onward} connection${onward === 1 ? " continues" : "s continue"} in other parts.` : `${shown}.`;
+}
+
+/** The view that shows a node in full: its container's components, the containers, or the overview. */
+export function homeView(model: Model, id: string): string {
+  const node = model.nodes.find((n) => n.id === id);
+  if (node?.kind === "component") {
+    const parent = model.edges.find((e) => e.kind === "contains" && e.to === id)?.from;
+    return parent ? `components:${parent}` : "containers";
+  }
+  return node?.kind === "container" ? "containers" : "overview";
+}
+
+/** What opening a node catches the reader up on: the node, and changed edges that touch it. */
+export function seenWith(id: string, changes: Change[]): string[] {
+  return changes.filter((c) => c.subject === id || (c.what === "edge" && c.nodes.includes(id))).map((c) => c.subject);
+}
+
+export const CHANGE_LABEL: Record<Change["change"], string> = { added: "New", changed: "Changed", removed: "Removed" };
+
+/** The ledger's order: widest reach first; among equals, the newest. */
+export function rank(decisions: Decision[]): Decision[] {
+  return [...decisions].sort((a, b) => b.blastRadius - a.blastRadius || Date.parse(b.at) - Date.parse(a.at) || b.id.localeCompare(a.id));
 }
