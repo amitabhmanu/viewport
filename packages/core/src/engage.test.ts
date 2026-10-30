@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EngageError, raiseFlag, resolveFlag, unresolvedFlags, writeQuizItems } from "./engage.js";
+import { EngageError, listPredictions, raiseFlag, recordPrediction, resolveFlag, unresolvedFlags, writeQuizItems } from "./engage.js";
 import { openState } from "./state.js";
 
 describe("flags", () => {
@@ -35,5 +35,18 @@ describe("writeQuizItems", () => {
       ]),
     ).toThrow(/two choices/);
     expect(db.prepare("SELECT COUNT(*) AS n FROM quiz_items").get()).toEqual({ n: 0 });
+  });
+});
+
+describe("predictions", () => {
+  const decision = { id: "D-001", chosen: "Queue", options: [{ name: "Inline", tradeoff: "a" }, { name: "Queue", tradeoff: "b" }] };
+
+  it("grades a guess against the choice and keeps the first answer", () => {
+    const db = openState(":memory:");
+    expect(recordPrediction(db, decision, "Inline", "2026-10-30T10:00:00.000Z")).toEqual({ decisionId: "D-001", at: "2026-10-30T10:00:00.000Z", guess: "Inline", skipped: false, correct: false });
+    expect(recordPrediction(db, decision, "Queue").correct).toBe(false);
+    expect(recordPrediction(db, { ...decision, id: "D-002" }, undefined)).toMatchObject({ skipped: true });
+    expect(listPredictions(db).map((p) => p.decisionId)).toEqual(["D-001", "D-002"]);
+    expect(() => recordPrediction(db, { ...decision, id: "D-003" }, "Nope")).toThrow(EngageError);
   });
 });

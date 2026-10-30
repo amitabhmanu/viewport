@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { appendDecision, initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { isHealthy, readLock, stopDaemon } from "./lock.js";
 import { type Daemon, startDaemon } from "./server.js";
@@ -97,6 +97,27 @@ describe("API", () => {
       ["app.api", { q: "trace", from: "app.api", direction: "downstream", nodes: 5 }],
       [null, { q: "slice", mode: "sync", nodes: 5 }],
     ]);
+  });
+
+  it("records a guess at a decision before it is revealed", async () => {
+    await appendDecision(viewportPaths(root).ledger, {
+      id: "D-001",
+      at: new Date().toISOString(),
+      title: "Queue notifications",
+      options: [
+        { name: "Inline", tradeoff: "simple" },
+        { name: "Queue", tradeoff: "resilient" },
+      ],
+      chosen: "Queue",
+      why: "Slow provider",
+      reversibility: "easy",
+      blastRadius: 2,
+    });
+    const post = (body: object) => api("/api/predictions", { method: "POST", body: JSON.stringify(body) });
+    expect(await (await post({ decisionId: "D-001", guess: "Queue" })).json()).toMatchObject({ guess: "Queue", correct: true });
+    expect((await post({ decisionId: "D-009" })).status).toBe(400);
+    expect((await post({ decisionId: "D-001", guess: 3 })).status).toBe(400);
+    expect(await (await api("/api/predictions")).json()).toEqual([expect.objectContaining({ decisionId: "D-001", correct: true })]);
   });
 
   it("stores flags raised from the viewer", async () => {

@@ -141,10 +141,10 @@ describe("viewer", () => {
     await appendDecision(join(root, ".viewport", "ledger.jsonl"), decision("D-002", "Big call", 4, "one-way"));
     await page.getByRole("link", { name: "Ledger" }).click();
     await expect.poll(() => page.locator(".decision h2").allTextContents()).toEqual(["Big call", "Small call"]);
-    expect(await page.locator(".decision.fresh").count()).toBe(2);
+    await expect.poll(() => page.locator(".decision.fresh").count()).toBe(2);
     await page.getByRole("radio", { name: "Easy" }).click();
-    expect(await page.locator(".decision h2").allTextContents()).toEqual(["Small call"]);
-    await page.locator("#D-001").click();
+    await expect.poll(() => page.locator(".decision h2").allTextContents()).toEqual(["Small call"]);
+    await page.locator("#D-001 .decision-head").click();
     await page.getByRole("radio", { name: "All" }).click();
     await expect.poll(() => page.locator(".decision.fresh h2").allTextContents()).toEqual(["Big call"]);
   });
@@ -174,5 +174,19 @@ describe("viewer", () => {
     const asked = db.prepare("SELECT payload FROM events WHERE kind = 'query'").all() as { payload: string }[];
     db.close();
     expect(asked.map((e) => JSON.parse(e.payload).q)).toEqual(["trace", "slice", "trace"]);
+  });
+
+  it("asks for a guess before revealing a decision, from Today and the Ledger", async () => {
+    await page.getByRole("link", { name: "Today" }).click();
+    const card = page.locator('[data-decision="D-002"]');
+    await card.waitFor();
+    expect(await page.locator("body").textContent()).not.toContain("because");
+    await card.getByRole("button", { name: /^B/ }).click();
+    await page.locator('[data-decision="D-002"]').waitFor({ state: "detached" });
+    await page.getByRole("link", { name: "Ledger" }).click();
+    await page.locator("#D-002 .result.wrong").getByText("You picked B; Claude chose A.").waitFor();
+    await page.locator("#D-001").getByRole("button", { name: "Skip and reveal" }).click();
+    await page.locator("#D-001 .result").getByText("You skipped this one.").waitFor();
+    expect(await page.locator("#D-001").textContent()).toContain("Chose A.");
   });
 });

@@ -17,6 +17,7 @@ import {
   changesSince,
   get,
   listPins,
+  listPredictions,
   logEvent,
   markAllSeen,
   markSeen,
@@ -25,6 +26,7 @@ import {
   readConfig,
   readLedger,
   readModel,
+  recordPrediction,
   removePin,
   slice,
   trace,
@@ -118,6 +120,22 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
         // The viewer re-runs a shown query when the model changes; only the asking is logged.
         if (q.get("quiet") !== "1") withState((db) => logEvent(db, "query", query.q === "trace" ? query.from : null, { ...query, nodes: result.nodes.length }));
         return result;
+      }
+      case "GET /api/predictions":
+        return withState((db) => listPredictions(db));
+      case "POST /api/predictions": {
+        const body = JSON.parse(await readBody(req)) as { decisionId?: unknown; guess?: unknown };
+        if (typeof body.decisionId !== "string" || (body.guess !== undefined && typeof body.guess !== "string")) {
+          throw new HttpError(400, "send a decisionId and a guess, or no guess to skip");
+        }
+        const { decisionId, guess } = body as { decisionId: string; guess?: string };
+        const decision = (await readLedger(paths.ledger)).find((d) => d.id === decisionId);
+        if (!decision) throw new HttpError(400, `unknown decision '${decisionId}'`);
+        return withState((db) => {
+          const prediction = recordPrediction(db, decision, guess);
+          logEvent(db, "predict", decisionId, { guess: guess ?? null, correct: prediction.correct ?? null });
+          return prediction;
+        });
       }
       case "GET /api/pins":
         return withState((db) => listPins(db));
