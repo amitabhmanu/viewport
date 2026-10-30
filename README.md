@@ -8,12 +8,13 @@ Keeps a developer's mental model alive while a coding agent builds. Viewport is 
 | --- | --- |
 | `.claude-plugin/` | Plugin manifest and a local marketplace entry |
 | `bin/viewport` | CLI wrapper used by commands and agents |
+| `bin/viewportd` | Viewer daemon wrapper: `ensure` prints the viewer URL, `stop` stops it |
 | `hooks/`, `agents/`, `skills/`, `commands/` | Plugin parts |
 | `packages/core` | Schema, verification, queries, salience |
 | `packages/mcp` | stdio MCP server |
 | `packages/hooks` | Hook sources, bundled into `hooks/dist` by `pnpm build` |
 | `packages/eval` | Evaluation harness for the phase gates (see `eval/README.md`) |
-| `packages/viewportd` | Local HTTP + SSE daemon |
+| `packages/viewportd` | Local HTTP + SSE daemon for the viewer |
 | `packages/web` | Viewer UI |
 | `fixtures/` | Sample Python and TypeScript apps for tests |
 
@@ -51,3 +52,5 @@ The CLI also works on its own: `bin/viewport status`, `bin/viewport verify --cha
 The plugin also starts the `viewport` MCP server, which gives Claude the model and ledger as tools: `model_get`, `model_view`, `model_trace`, `model_slice`, `ledger_get`, `model_verify` and `flags_pending` to read, and `model_upsert`, `model_remove`, `ledger_append`, `engage_write` and `flags_resolve` to write; `model_verify` checks the model against the code without changing it. Every write is validated against the schema and verified against the code, and `ledger_append` computes a decision's blast radius from the model.
 
 Hooks keep the model in step while Claude works. At session start Claude gets a short overview of the model and the rule for logging decisions. After each edit, Claude hears about it only if the file belongs to no component or the developer has flagged something. Before Claude finishes, the Stop hook blocks once if that session's edits left files unclaimed, added dependencies the model lacks, or changed modeled components. After the `viewport-modeler` agent runs, the model is re-verified and saved as a new revision.
+
+The viewer runs from a small local daemon, one per repo, which the SessionStart hook starts in the background. `/viewport:open` prints its URL and opens it. The daemon listens on 127.0.0.1 only, needs the random token in the URL for its API, and pushes a change event whenever `.viewport/` changes. It stops itself after 8 idle hours; `bin/viewportd stop` stops it sooner.

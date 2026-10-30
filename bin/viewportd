@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Runs the viewer daemon from this checkout: `ensure` (default) starts it if needed
+# and prints the viewer URL, `serve` runs it in the foreground, `stop` stops it.
+here="$(cd "$(dirname "$0")" && pwd)"
+main="$here/../packages/viewportd/dist/main.js"
+if [ ! -f "$main" ]; then
+  echo "viewportd: not built; run 'pnpm install && pnpm build' in $(dirname "$here")" >&2
+  exit 1
+fi
+exec node --disable-warning=ExperimentalWarning "$main" "$@"
