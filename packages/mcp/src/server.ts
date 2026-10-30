@@ -31,7 +31,10 @@ import {
   viewportPaths,
   writeModelFromAgent,
   writeQuizItems,
+  type VerificationReport,
   type WriteResult,
+  readConfig,
+  verify,
 } from "@viewport/core";
 import { ZodError, z } from "zod";
 
@@ -66,18 +69,17 @@ function cap(items: string[]): string[] {
 
 /** A short summary of a model write, so the agent sees what verification found without the whole model. */
 function summarizeWrite(write: WriteResult) {
-  const r = write.report;
+  return { revision: write.model.revision, stamped: write.stamped, findings: findings(write.report) };
+}
+
+function findings(r: VerificationReport) {
   return {
-    revision: write.model.revision,
-    stamped: write.stamped,
-    findings: {
-      unclaimed: cap(r.unclaimed),
-      doubleClaimed: r.doubleClaimed,
-      missingDependencies: cap(r.missingDependencies.map((d) => `${d.from} -> ${d.to} (${d.evidence[0]?.file ?? "?"})`)),
-      unsupportedEdges: r.unsupportedEdges,
-      changedSinceModeled: r.staleComponents,
-      notes: r.notes,
-    },
+    unclaimed: cap(r.unclaimed),
+    doubleClaimed: r.doubleClaimed,
+    missingDependencies: cap(r.missingDependencies.map((d) => `${d.from} -> ${d.to} (${d.evidence[0]?.file ?? "?"})`)),
+    unsupportedEdges: r.unsupportedEdges,
+    changedSinceModeled: r.staleComponents,
+    notes: r.notes,
   };
 }
 
@@ -193,6 +195,22 @@ export function createServer(root: string): McpServer {
         }
         const matching = affects === undefined ? ledger : ledger.filter((d) => d.affects.includes(affects));
         return matching.slice(-limit).reverse();
+      }),
+  );
+
+  server.registerTool(
+    "model_verify",
+    {
+      description:
+        "Checks the whole model against the code without changing anything: files no component owns, overlapping components, imports with no depends_on edge, sync or async edges no import backs, and components whose code changed since they were modeled.",
+      inputSchema: {},
+      annotations: read,
+    },
+    () =>
+      handle(async () => {
+        const model = await readModel(paths.model);
+        const report = await verify(root, model, await readConfig(paths.config));
+        return { revision: model.revision, findings: findings(report) };
       }),
   );
 
