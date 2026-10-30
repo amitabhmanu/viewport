@@ -44,6 +44,8 @@ export const ComponentNode = z.object({
   tech: z.string().min(1).optional(),
   /** Globs, relative to the repo root, for the source files this component owns. */
   paths: z.array(z.string().min(1)).min(1),
+  /** Hash of the component's files when it was last modeled; a mismatch means stale. */
+  fingerprint: z.string().min(1).optional(),
 });
 export const DecisionNode = z.object({
   ...nodeBase,

@@ -7,3 +7,7 @@ export { stableStringify, writeFileAtomic } from "./fsutil.js";
 export { viewportJsonSchema } from "./json-schema.js";
 export * from "./verify/index.js";
 export * from "./query/index.js";
+export * from "./config-store.js";
+export * from "./workspace.js";
+export { runCli } from "./cli/run.js";
+export type { CliIo } from "./cli/run.js";

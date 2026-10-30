@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Runs the Viewport CLI from this checkout. Needs `pnpm install && pnpm build` once.
+here="$(cd "$(dirname "$0")" && pwd)"
+cli="$here/../packages/core/dist/cli/main.js"
+if [ ! -f "$cli" ]; then
+  echo "viewport: not built; run 'pnpm install && pnpm build' in $(dirname "$here")" >&2
+  exit 1
+fi
+exec node --disable-warning=ExperimentalWarning "$cli" "$@"

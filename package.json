@@ -10,7 +10,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "vitest run",
-    "check": "pnpm typecheck && pnpm lint && pnpm test"
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
+    "build": "pnpm --filter @viewport/core build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

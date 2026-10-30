@@ -3,6 +3,9 @@
   "owner": {
     "name": "Amitabh Manu"
   },
+  "metadata": {
+    "description": "Local development marketplace for the Viewport plugin."
+  },
   "plugins": [
     {
       "name": "viewport",
