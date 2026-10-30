@@ -2,10 +2,13 @@ import { existsSync } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import {
+  EXPLAIN_BATCH,
   type Model,
   VIEWPORT_DIR,
   applyReport,
   coverage,
+  enqueueJob,
+  explainDue,
   listSources,
   logEvent,
   openState,
@@ -187,7 +190,26 @@ export async function stop(root: string, input: HookInput): Promise<HookOutput> 
       `The developer is waiting on ${flags.length === 1 ? "an answer" : "answers"}: ${flags.map((f) => `flag ${f.id} on ${f.subject}: "${f.text}"`).join("; ")}. Answer each with flags_resolve (log a new decision first if it changes your plan).`,
     );
   }
-  return lines.length > 0 ? { decision: "block", reason: lines.join("\n") } : undefined;
+  if (lines.length > 0) return { decision: "block", reason: lines.join("\n") };
+  await queueExplanations(root);
+  return undefined;
+}
+
+/**
+ * A checkpoint: with the model in step, hand what is new or changed since it was last
+ * explained to the explainer, which the viewer's daemon runs in the background.
+ */
+async function queueExplanations(root: string): Promise<void> {
+  const paths = viewportPaths(root);
+  const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+  if (!model.nodes.some((n) => n.kind === "component")) return;
+  const state = openState(paths.stateDb);
+  try {
+    const due = explainDue(state, model, ledger);
+    for (let i = 0; i < due.length; i += EXPLAIN_BATCH) enqueueJob(state, "explain", { subjects: due.slice(i, i + EXPLAIN_BATCH) });
+  } finally {
+    state.close();
+  }
 }
 
 /**

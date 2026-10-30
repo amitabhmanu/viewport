@@ -2,10 +2,12 @@ import { type HookInput, type HookOutput, findWorkspace } from "./hooks.js";
 
 /**
  * Runs one hook: reads Claude Code's JSON input from stdin, does nothing outside a
- * Viewport workspace, and prints the hook's output. A failure is reported on stderr
+ * Viewport workspace or inside a Viewport job, and prints the hook's output. A failure is reported on stderr
  * with exit code 1, which Claude Code treats as non-blocking.
  */
 export async function runHook(handler: (root: string, input: HookInput) => Promise<HookOutput>): Promise<void> {
+  // Viewport's own background jobs (the explainer, the grader) run Claude too; their hooks stay quiet.
+  if (process.env.VIEWPORT_JOB) return;
   try {
     const chunks: Buffer[] = [];
     for await (const chunk of process.stdin) chunks.push(chunk as Buffer);

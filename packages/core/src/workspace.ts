@@ -128,7 +128,7 @@ export async function writeModelFromAgent(root: string, incoming: unknown, revie
 
 /** A node's content without bookkeeping fields, for change detection. */
 function semantic(node: ModelNode): string {
-  const { sync: _s, source: _o, changedAt: _c, ...rest } = node;
+  const { sync: _s, source: _o, changedAt: _c, takeaway: _t, takeaways: _ts, ...rest } = node;
   if (rest.kind === "component") delete (rest as { fingerprint?: string }).fingerprint;
   return stableStringify(rest);
 }

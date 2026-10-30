@@ -280,6 +280,28 @@
                   "takeaway": {
                     "minLength": 1,
                     "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
                   }
                 },
                 "required": [
@@ -332,6 +354,28 @@
                   "takeaway": {
                     "minLength": 1,
                     "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
                   }
                 },
                 "required": [
@@ -388,6 +432,28 @@
                   "takeaway": {
                     "minLength": 1,
                     "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
                   }
                 },
                 "required": [
@@ -440,6 +506,28 @@
                   "takeaway": {
                     "minLength": 1,
                     "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
                   },
                   "tech": {
                     "minLength": 1,
@@ -509,6 +597,28 @@
                     "minLength": 1,
                     "type": "string"
                   },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  },
                   "tech": {
                     "minLength": 1,
                     "type": "string"
@@ -574,6 +684,28 @@
                   "takeaway": {
                     "minLength": 1,
                     "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
                   }
                 },
                 "required": [

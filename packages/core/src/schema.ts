@@ -17,6 +17,8 @@ const nodeBase = {
   name: z.string().min(1),
   /** One sentence a reader should leave with. Written before the view is rendered. */
   takeaway: z.string().min(1).optional(),
+  /** The takeaway at each level of detail, written by the explainer. */
+  takeaways: z.object({ simple: z.string().min(1), medium: z.string().min(1), complex: z.string().min(1) }).optional(),
   source: Source.default("agent"),
   sync: SyncState.default("unverified"),
   /** Commit at which this node was last updated. */

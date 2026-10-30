@@ -2,7 +2,7 @@ import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appendDecision, initWorkspace, openState, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { appendDecision, initWorkspace, openState, readModel, resolveFlag, unresolvedFlags, viewportPaths, writeModel, writeModelFromAgent, writeQuizItems } from "@viewport/core";
 import { type Daemon, startDaemon } from "@viewport/viewportd";
 import { type Browser, type Page, chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -220,5 +220,42 @@ describe("viewer", () => {
     await page.getByRole("link", { name: "Today" }).click();
     await page.getByRole("heading", { name: "Claude's answers this week" }).waitFor();
     expect(await page.locator(".flag.resolved").count()).toBe(2);
+  });
+
+  it("asks for confidence before an answer, grades predictions on the spot and shows takeaways", async () => {
+    const db = openState(viewportPaths(root).stateDb);
+    const yesterday = new Date(Date.now() - 25 * 60 * 60 * 1000);
+    writeQuizItems(
+      db,
+      [
+        { subject: "app.orders", kind: "why", question: "Why is notifications async?", answer: "So a slow send never blocks an order." },
+        { subject: "D-001", kind: "predict", question: "Which did Claude pick?", choices: ["A", "B"], answer: "A" },
+      ],
+      yesterday,
+    );
+    db.close();
+    const model = await readModel(viewportPaths(root).model);
+    await writeModel(viewportPaths(root).model, {
+      ...model,
+      nodes: model.nodes.map((n) => (n.id === "app.orders" ? { ...n, takeaways: { simple: "Takes orders.", medium: "Runs every order from cart to paid.", complex: "Owns order state." } } : n)),
+    });
+
+    await page.goto(`http://127.0.0.1:${daemon.port}/`);
+    const why = page.locator(".quiz", { hasText: "Why is notifications async?" });
+    await why.waitFor();
+    expect(await page.locator("body").textContent()).not.toContain("slow send never blocks");
+    await why.getByLabel("Your answer").fill("Sending is slow");
+    expect(await why.getByRole("button", { name: "Answer" }).isDisabled()).toBe(true);
+    await why.getByRole("radio", { name: "Fairly sure" }).click();
+    await why.getByRole("button", { name: "Answer" }).click();
+    await why.getByText("Saved. Your answer is checked later. It comes back in 1 day.").waitFor();
+
+    const predict = page.locator(".quiz", { hasText: "Which did Claude pick?" });
+    await predict.getByRole("radio", { name: "Certain" }).click();
+    await predict.getByRole("button", { name: "B" }).click();
+    await predict.getByText("You said B; the answer is A. It comes back in 1 day.").waitFor();
+
+    await page.goto(`http://127.0.0.1:${daemon.port}/map?view=components:app&focus=app.orders&level=simple`);
+    await page.locator(".panel .takeaway", { hasText: "Takes orders." }).waitFor();
   });
 });

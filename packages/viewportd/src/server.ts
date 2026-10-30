@@ -13,8 +13,11 @@ import {
   type SliceFilter,
   type TraceOptions,
   type ViewName,
+  EngageError,
   addPin,
+  answerQuiz,
   changesSince,
+  dueQuiz,
   get,
   listFlags,
   listPins,
@@ -27,6 +30,7 @@ import {
   readConfig,
   readLedger,
   readModel,
+  recentJobs,
   recordPrediction,
   removePin,
   slice,
@@ -37,6 +41,7 @@ import {
   viewportPaths,
 } from "@viewport/core";
 import { ZodError } from "zod";
+import { type WorkerOptions, startWorker } from "./worker.js";
 
 export interface DaemonOptions {
   /** Port to listen on; 0 picks a free one. */
@@ -46,6 +51,8 @@ export interface DaemonOptions {
   /** Shut down after this long with no requests and no open event streams. */
   idleMs?: number;
   onIdle?: () => void;
+  /** Run background jobs (the explainer) with these settings; off when left out. */
+  worker?: WorkerOptions;
 }
 
 export interface Daemon {
@@ -138,6 +145,22 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
           return prediction;
         });
       }
+      case "GET /api/quiz":
+        return withState((db) => dueQuiz(db));
+      case "POST /api/quiz": {
+        const body = JSON.parse(await readBody(req)) as { itemId?: unknown; answer?: unknown; confidence?: unknown };
+        if (typeof body.itemId !== "number" || typeof body.answer !== "string" || typeof body.confidence !== "number") {
+          throw new HttpError(400, "send itemId, answer and confidence");
+        }
+        const { itemId, answer, confidence } = body as { itemId: number; answer: string; confidence: number };
+        return withState((db) => {
+          const result = answerQuiz(db, itemId, answer, confidence);
+          logEvent(db, "quiz", String(itemId), { confidence, grade: result.grade ?? null });
+          return result;
+        });
+      }
+      case "GET /api/jobs":
+        return withState((db) => recentJobs(db));
       case "GET /api/pins":
         return withState((db) => listPins(db));
       case "POST /api/pins": {
@@ -231,7 +254,7 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       const body = await api(req, url);
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
     })().catch((err: unknown) => {
-      const status = err instanceof HttpError ? err.status : err instanceof QueryError || err instanceof ZodError || err instanceof SyntaxError ? 400 : err instanceof ConfigMissingError ? 404 : 500;
+      const status = err instanceof HttpError ? err.status : err instanceof QueryError || err instanceof EngageError || err instanceof ZodError || err instanceof SyntaxError ? 400 : err instanceof ConfigMissingError ? 404 : 500;
       const message = err instanceof ZodError ? err.issues.map((i) => i.message).join("; ") : err instanceof Error ? err.message : String(err);
       if (!res.headersSent) res.writeHead(status, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: message }));
@@ -252,6 +275,8 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
     pending.add(what);
     timer ??= setTimeout(() => {
       timer = undefined;
+      // New jobs arrive through state.db (the Stop hook queues them); look for them now.
+      if (pending.has("state")) worker?.kick();
       const data = JSON.stringify({ changed: [...pending].sort() });
       pending.clear();
       for (const c of clients) c.write(`event: change\ndata: ${data}\n\n`);
@@ -269,6 +294,7 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
   };
   watchDir(paths.dir, (f) => (f.startsWith("model.json") ? "model" : f.startsWith("ledger.jsonl") ? "ledger" : undefined));
   watchDir(paths.localDir, (f) => (f.startsWith("state.db") ? "state" : undefined));
+  const worker = options.worker ? startWorker(root, options.worker) : undefined;
 
   const heartbeat = setInterval(() => {
     for (const c of clients) c.write(": ping\n\n");
@@ -290,6 +316,7 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       clearInterval(heartbeat);
       if (timer) clearTimeout(timer);
       for (const w of watchers) w.close();
+      await worker?.stop();
       for (const c of clients) c.end();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },

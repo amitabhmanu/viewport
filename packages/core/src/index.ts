@@ -15,3 +15,6 @@ export * from "./model-edit.js";
 export * from "./engage.js";
 export * from "./changes.js";
 export * from "./asks.js";
+export * from "./jobs.js";
+export * from "./quiz.js";
+export * from "./explain.js";
