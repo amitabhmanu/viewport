@@ -16,6 +16,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for the viewer's end-to-end test
+        run: pnpm --filter @viewport/web exec playwright install --with-deps chromium
       - run: pnpm check
       - name: Validate plugin manifest
         run: npx -y @anthropic-ai/claude-code plugin validate .
