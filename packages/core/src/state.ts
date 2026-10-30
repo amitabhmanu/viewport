@@ -69,6 +69,9 @@ export const MIGRATIONS: readonly string[] = [
     at TEXT NOT NULL
   );
   `,
+  `
+  ALTER TABLE flags ADD COLUMN decision_id TEXT;
+  `,
 ];
 
 /** Opens (creating if needed) state.db in WAL mode and applies pending migrations. */

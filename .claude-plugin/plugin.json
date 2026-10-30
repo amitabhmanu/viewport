@@ -6,5 +6,14 @@
     "name": "Amitabh Manu"
   },
   "repository": "https://github.com/amitabhmanu/viewport",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "mcpServers": {
+    "viewport": {
+      "command": "node",
+      "args": [
+        "--disable-warning=ExperimentalWarning",
+        "${CLAUDE_PLUGIN_ROOT}/packages/mcp/dist/main.js"
+      ]
+    }
+  }
 }
