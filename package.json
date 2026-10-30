@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm lint && pnpm build && pnpm test",
-    "build": "pnpm -r build"
+    "build": "pnpm -r build",
+    "eval": "tsx packages/eval/src/run.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

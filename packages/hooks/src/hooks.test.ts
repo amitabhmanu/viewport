@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -138,8 +139,28 @@ describe("stop", () => {
     const reason = out?.reason as string;
     expect(reason).toContain("Files no component owns: src/shop/refunds/core.py");
     expect(reason).toContain("New dependencies the model lacks: app.payments -> app.notifications");
-    expect(reason).toContain("Components whose code changed: app.payments");
     expect(await stop(root, { session_id: "s1", cwd: root, stop_hook_active: true })).toBeUndefined();
+  });
+
+  it("marks a changed component reviewed instead of blocking when nothing structural changed", async () => {
+    await addFile("src/shop/orders/extra.py", "from shop.storage.db import save\n");
+    await postToolUse(root, edit("src/shop/orders/extra.py"));
+    const before = await readModel(viewportPaths(root).model);
+    expect(await stop(root, { session_id: "s1", cwd: root })).toBeUndefined();
+    const after = await readModel(viewportPaths(root).model);
+    expect(after.revision).toBe(before.revision + 1);
+    const fingerprint = (m: typeof after) => m.nodes.find((n) => n.id === "app.orders" && n.kind === "component");
+    expect(fingerprint(after)).not.toEqual(fingerprint(before));
+  });
+
+  it("counts files changed outside Claude's edit tools, as git sees them", async () => {
+    const git = (...args: string[]) => execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], { cwd: root });
+    git("init", "-q");
+    git("add", "-A");
+    git("commit", "-qm", "base");
+    await addFile("src/shop/refunds/core.py", "x = 1\n");
+    const out = await stop(root, { session_id: "s1", cwd: root });
+    expect(out?.reason).toContain("Files no component owns: src/shop/refunds/core.py");
   });
 
   it("ignores gaps in files another session edited", async () => {

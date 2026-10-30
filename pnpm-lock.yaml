@@ -55,6 +55,12 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
 
+  packages/eval:
+    dependencies:
+      '@viewport/core':
+        specifier: workspace:*
+        version: link:../core
+
   packages/hooks:
     dependencies:
       '@viewport/core':

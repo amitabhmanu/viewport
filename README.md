@@ -12,6 +12,7 @@ Keeps a developer's mental model alive while a coding agent builds. Viewport is 
 | `packages/core` | Schema, verification, queries, salience |
 | `packages/mcp` | stdio MCP server |
 | `packages/hooks` | Hook sources, bundled into `hooks/dist` by `pnpm build` |
+| `packages/eval` | Evaluation harness for the phase gates (see `eval/README.md`) |
 | `packages/viewportd` | Local HTTP + SSE daemon |
 | `packages/web` | Viewer UI |
 | `fixtures/` | Sample Python and TypeScript apps for tests |
