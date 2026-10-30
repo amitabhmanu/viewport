@@ -5,6 +5,10 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "gen:schema": "tsx src/gen-schema.ts"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
   }
 }
