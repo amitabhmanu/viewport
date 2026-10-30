@@ -124,6 +124,7 @@ describe("API", () => {
     const res = await api("/api/flags", { method: "POST", body: JSON.stringify({ subject: "app.orders", text: " why sync? " }) });
     expect(await res.json()).toMatchObject({ subject: "app.orders", text: "why sync?", status: "pending" });
     expect(await (await api("/api/flags")).json()).toHaveLength(1);
+    expect(await (await api("/api/flags?all=1")).json()).toHaveLength(1);
     expect((await api("/api/flags", { method: "POST", body: JSON.stringify({ subject: "x" }) })).status).toBe(400);
   });
 });

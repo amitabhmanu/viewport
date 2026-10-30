@@ -10,6 +10,7 @@ export interface Flag {
   status: "pending" | "delivered" | "resolved";
   answer?: string;
   decisionId?: string;
+  resolvedAt?: string;
 }
 
 interface FlagRow {
@@ -20,6 +21,7 @@ interface FlagRow {
   status: Flag["status"];
   answer: string | null;
   decision_id: string | null;
+  resolved_at: string | null;
 }
 
 function toFlag(row: FlagRow): Flag {
@@ -31,6 +33,7 @@ function toFlag(row: FlagRow): Flag {
     status: row.status,
     ...(row.answer !== null ? { answer: row.answer } : {}),
     ...(row.decision_id !== null ? { decisionId: row.decision_id } : {}),
+    ...(row.resolved_at !== null ? { resolvedAt: row.resolved_at } : {}),
   };
 }
 
@@ -45,6 +48,12 @@ export function raiseFlag(db: DatabaseSync, subject: string, text: string, at = 
 /** Flags Claude has not answered yet, oldest first. Reading does not change their status. */
 export function unresolvedFlags(db: DatabaseSync): Flag[] {
   const rows = db.prepare("SELECT * FROM flags WHERE status != 'resolved' ORDER BY at, id").all() as unknown as FlagRow[];
+  return rows.map(toFlag);
+}
+
+/** Every flag, answered or not, oldest first: what the viewer shows on each flagged element. */
+export function listFlags(db: DatabaseSync): Flag[] {
+  const rows = db.prepare("SELECT * FROM flags ORDER BY at, id").all() as unknown as FlagRow[];
   return rows.map(toFlag);
 }
 

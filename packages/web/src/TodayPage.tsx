@@ -3,6 +3,7 @@ import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { CHANGE_LABEL, KIND_LABEL, homeView, seenWith, toPredict } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
+import { FLAG_STATUS } from "./Flags.js";
 import { PredictPrompt } from "./Predict.js";
 import { mapHref } from "./router.js";
 
@@ -10,7 +11,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const live = useLive();
   const model = useLoad(api.model, [live.model]);
   const ledger = useLoad(api.ledger, [live.ledger]);
-  const flags = useLoad(api.flags, [live.state]);
+  const flags = useLoad(api.allFlags, [live.state]);
   const predictions = useLoad(api.predictions, [live.state]);
   const { changes } = useChanges();
   const error = model.error ?? ledger.error ?? flags.error;
@@ -21,6 +22,8 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const stale = components.filter((n) => n.sync === "stale");
   const unverified = components.filter((n) => n.sync === "unverified");
   const open = (flags.data ?? []).filter((f) => f.status !== "resolved");
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const answered = (flags.data ?? []).filter((f) => f.resolvedAt !== undefined && Date.parse(f.resolvedAt) > weekAgo).reverse();
   const tiles: [string, number, string][] = [
     ["Components", components.length, mapHref("overview")],
     ["Changed since modeled", stale.length, mapHref("containers")],
@@ -67,7 +70,38 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
           <ul className="flags">
             {open.map((f) => (
               <li key={f.id}>
-                <span className="muted">{f.subject}</span> {f.text} <span className="tag">{f.status === "pending" ? "Waiting for the agent" : "Seen by the agent"}</span>
+                <span className="muted">{f.subject}</span> {f.text} <span className="tag">{FLAG_STATUS[f.status]}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {answered.length > 0 && (
+        <>
+          <h2>Claude's answers this week</h2>
+          <ul className="flags flag-list">
+            {answered.map((f) => (
+              <li key={f.id} className="flag resolved">
+                <p className="q">
+                  <span className="muted">{f.subject}</span> {f.text}
+                </p>
+                <p className="a">
+                  {f.answer}
+                  {f.decisionId && (
+                    <>
+                      {" "}
+                      <a
+                        href={`/ledger#${f.decisionId}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          go(`/ledger#${f.decisionId}`);
+                        }}
+                      >
+                        See {f.decisionId}
+                      </a>
+                    </>
+                  )}
+                </p>
               </li>
             ))}
           </ul>

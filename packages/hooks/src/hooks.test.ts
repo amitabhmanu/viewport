@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { initWorkspace, openState, raiseFlag, readModel, recordDecision, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { initWorkspace, openState, raiseFlag, readModel, recordDecision, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import { DECISION_RULE, type HookInput, findWorkspace, postToolUse, sessionStart, stop, subagentStop } from "./hooks.js";
 
@@ -123,6 +123,21 @@ describe("postToolUse", () => {
 });
 
 describe("stop", () => {
+  it("asks Claude to answer open flags before finishing, even without edits", async () => {
+    const db = openState(viewportPaths(root).stateDb);
+    const flag = raiseFlag(db, "app.orders", "why is this sync?");
+    db.close();
+    const out = await stop(root, { session_id: "s1", cwd: root });
+    expect(out).toMatchObject({ decision: "block" });
+    expect((out as { reason: string }).reason).toContain(`flag ${flag.id} on app.orders: "why is this sync?"`);
+    expect(await stop(root, { session_id: "s1", cwd: root, stop_hook_active: true })).toBeUndefined();
+    const after = openState(viewportPaths(root).stateDb);
+    expect(unresolvedFlags(after)[0]?.status).toBe("delivered");
+    resolveFlag(after, flag.id, "It needs the stock count before replying.");
+    after.close();
+    expect(await stop(root, { session_id: "s1", cwd: root })).toBeUndefined();
+  });
+
   it("lets Claude finish when the session edited nothing", async () => {
     await addFile("src/shop/refunds/core.py", "x = 1\n");
     expect(await stop(root, { session_id: "s1", cwd: root })).toBeUndefined();

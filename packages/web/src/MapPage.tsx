@@ -1,9 +1,10 @@
-import type { Change, Level, ModelNode } from "@viewport/core";
-import { type MouseEvent, useMemo, useState } from "react";
+import type { Change, Level, Model, ModelNode, ViewEdge } from "@viewport/core";
+import { type MouseEvent, useMemo } from "react";
 import { api } from "./api.js";
 import { askHref } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
+import { FlagBox, useFlags } from "./Flags.js";
 import { CHANGE_LABEL, KIND_LABEL, partShowing, partSummary, seenWith, subtitle, trail, viewTitle, zoomTarget } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { mapHref } from "./router.js";
@@ -17,6 +18,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
   const level: Level = LEVELS.includes(levelParam as Level) ? (levelParam as Level) : "medium";
   const focus = params.get("focus") ?? undefined;
   const partParam = params.get("part");
+  const edgeParam = params.get("edge") ?? undefined;
 
   const model = useLoad(api.model, [live.model]);
   const parts = useLoad(() => api.view(view, level), [view, level, live.model]);
@@ -48,8 +50,10 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
   const requested = partParam === null ? partShowing(parts.data, focus) : Number(partParam) - 1;
   const index = Math.min(Math.max(Number.isFinite(requested) ? requested : 0, 0), parts.data.length - 1);
   const part = parts.data[index]!;
-  const href = (to: { view?: string; level?: Level; focus?: string | undefined; part?: number | undefined }) =>
-    mapHref(to.view ?? view, { level: to.level ?? level, focus: "focus" in to ? to.focus : focus, part: "part" in to ? to.part : index + 1 });
+  // Any navigation drops a selected arrow unless it says otherwise; arrows belong to one view.
+  const href = (to: { view?: string; level?: Level; focus?: string | undefined; part?: number | undefined; edge?: string | undefined }) =>
+    mapHref(to.view ?? view, { level: to.level ?? level, focus: "focus" in to ? to.focus : focus, part: "part" in to ? to.part : index + 1, edge: to.edge });
+  const viewEdge = edgeParam === undefined ? undefined : part.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === edgeParam);
 
   const openStub = async (id: string) => {
     const target = part.continuesIn[id];
@@ -117,6 +121,8 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             }}
             onOpen={zoom}
             onStub={(id) => void openStub(id)}
+            onSelectEdge={(key) => go(href({ focus: undefined, edge: key === edgeParam ? undefined : key }))}
+            selectedEdge={edgeParam}
           />
           {parts.data.length > 1 && (
             <div className="parts" aria-label="Parts of this view">
@@ -134,7 +140,8 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             </div>
           )}
         </div>
-        {focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} onGo={go} />}
+        {viewEdge && model.data && <EdgePanel edge={viewEdge} model={model.data} nodes={nodes} modes={modes} onPick={(id) => go(href({ focus: id }))} />}
+        {viewEdge === undefined && focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} onGo={go} />}
       </div>
     </section>
   );
@@ -159,12 +166,11 @@ function NodePanel({
 }) {
   const live = useLive();
   const detail = useLoad(() => api.node(node.id), [node.id, live.model]);
-  const [text, setText] = useState("");
+  const flags = useFlags();
   const follow = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     onGo(e.currentTarget.getAttribute("href")!);
   };
-  const [sent, setSent] = useState(false);
   const d = detail.data;
   return (
     <aside className="panel" aria-label={node.name}>
@@ -204,24 +210,65 @@ function NodePanel({
       {d && d.outgoing.length > 0 && <Links title="Depends on" nodes={nodes} ids={d.outgoing.map((e) => e.to)} onPick={onPick} />}
       {d && d.incoming.length > 0 && <Links title="Used by" nodes={nodes} ids={d.incoming.map((e) => e.from)} onPick={onPick} />}
       {d && d.decisions.length > 0 && <Links title="Shaped by" nodes={nodes} ids={d.decisions} onPick={onPick} />}
-      <h3>Ask the agent</h3>
-      {sent ? (
-        <p className="muted">Sent. The agent sees it on its next edit.</p>
-      ) : (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (text.trim() === "") return;
-            void api.flag(node.id, text).then(() => {
-              setSent(true);
-              setText("");
-            });
-          }}
-        >
-          <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={`Why is ${node.name} built this way?`} rows={3} />
-          <button type="submit">Flag</button>
-        </form>
+      <h3>Questions for Claude</h3>
+      <FlagBox subject={node.id} flags={flags.get(node.id) ?? []} placeholder={`Why is ${node.name} built this way?`} />
+    </aside>
+  );
+}
+
+/**
+ * An arrow on the Map: what it connects and how, the decisions behind it, and
+ * questions about it. A lifted arrow stands for several dependencies between parts
+ * inside the two boxes; questions on it go to the arrow as drawn.
+ */
+function EdgePanel({
+  edge,
+  model,
+  nodes,
+  modes,
+  onPick,
+}: {
+  edge: ViewEdge;
+  model: Model;
+  nodes: Map<string, ModelNode>;
+  modes: Map<string, string>;
+  onPick: (id: string) => void;
+}) {
+  const flags = useFlags();
+  const name = (id: string) => nodes.get(id)?.name ?? id;
+  const subject = edge.sources.length === 1 ? edge.sources[0]! : `${edge.kind}:${edge.from}->${edge.to}`;
+  const single = edge.sources.length === 1 ? model.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === subject) : undefined;
+  const decisions = model.edges.filter((e) => e.kind === "decided_by" && edge.sources.includes(e.from)).map((e) => e.to);
+  return (
+    <aside className="panel" aria-label="Dependency">
+      <p className="kind">{edge.kind === "uses" ? "Uses" : "Dependency"}</p>
+      <h2>
+        {name(edge.from)} → {name(edge.to)}
+      </h2>
+      {single?.mode && (
+        <p>
+          {single.mode === "async" ? "Asynchronous" : single.mode === "data" ? "Through shared data" : "Synchronous call"}
+          {single.protocol ? ` over ${single.protocol}` : ""}
+        </p>
       )}
+      {edge.sources.length > 1 && (
+        <>
+          <h3>Stands for</h3>
+          <ul className="links">
+            {edge.sources.map((key) => {
+              const [from, to] = key.slice(key.indexOf(":") + 1).split("->") as [string, string];
+              return (
+                <li key={key}>
+                  {name(from)} → {name(to)} {modes.get(key) && <span className="muted">({modes.get(key)})</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+      {decisions.length > 0 && <Links title="Shaped by" nodes={nodes} ids={decisions} onPick={onPick} />}
+      <h3>Questions for Claude</h3>
+      <FlagBox subject={subject} flags={flags.get(subject) ?? []} placeholder={`Why does ${name(edge.from)} depend on ${name(edge.to)}?`} />
     </aside>
   );
 }

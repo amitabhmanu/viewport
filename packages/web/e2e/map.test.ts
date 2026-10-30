@@ -2,7 +2,7 @@ import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appendDecision, initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { appendDecision, initWorkspace, openState, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { type Daemon, startDaemon } from "@viewport/viewportd";
 import { type Browser, type Page, chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -52,6 +52,7 @@ beforeAll(async () => {
   daemon = await startDaemon(root, { webRoot: WEB });
   browser = await chromium.launch();
   page = await browser.newPage();
+  page.setDefaultTimeout(8000);
 });
 afterAll(async () => {
   await browser?.close();
@@ -188,5 +189,36 @@ describe("viewer", () => {
     await page.locator("#D-001").getByRole("button", { name: "Skip and reveal" }).click();
     await page.locator("#D-001 .result").getByText("You skipped this one.").waitFor();
     expect(await page.locator("#D-001").textContent()).toContain("Chose A.");
+  });
+
+  it("flags an arrow and a decision, and shows Claude's answers where they were asked", async () => {
+    await page.goto(`http://127.0.0.1:${daemon.port}/map?view=components:app&level=complex`);
+    // Arrows bend, so the centre of their box is often off the line; select by keyboard.
+    await page.getByRole("button", { name: "Dependency orders to payments" }).focus();
+    await page.keyboard.press("Enter");
+    await page.locator(".panel h2", { hasText: "orders → payments" }).waitFor();
+    await page.getByLabel("Question for Claude").fill("Why call payments synchronously?");
+    await page.getByRole("button", { name: "Flag" }).click();
+    await page.locator(".panel .flag", { hasText: "Waiting for Claude" }).waitFor();
+
+    await page.getByRole("link", { name: "Ledger" }).click();
+    await page.locator("#D-001").getByRole("button", { name: "Flag a question" }).click();
+    await page.locator("#D-001").getByLabel("Question for Claude").fill("Is A still right?");
+    await page.locator("#D-001").getByRole("button", { name: "Flag" }).click();
+    await page.locator("#D-001 .flag").waitFor();
+
+    const db = openState(viewportPaths(root).stateDb);
+    const flags = unresolvedFlags(db);
+    expect(flags.map((f) => f.subject)).toEqual(["depends_on:app.orders->app.payments", "D-001"]);
+    resolveFlag(db, flags[0]!.id, "The order must not be confirmed before the charge succeeds.");
+    resolveFlag(db, flags[1]!.id, "No, replaced.", "D-002");
+    db.close();
+
+    await page.locator("#D-001 .flag .a", { hasText: "No, replaced." }).waitFor();
+    await page.goBack();
+    await page.locator(".panel .flag .a", { hasText: "must not be confirmed" }).waitFor();
+    await page.getByRole("link", { name: "Today" }).click();
+    await page.getByRole("heading", { name: "Claude's answers this week" }).waitFor();
+    expect(await page.locator(".flag.resolved").count()).toBe(2);
   });
 });
