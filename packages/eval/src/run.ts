@@ -18,6 +18,9 @@ import { type EvalTask, TASKS } from "./tasks.js";
 const REPO = fileURLToPath(new URL("../../../", import.meta.url));
 const exec = promisify(execFile);
 
+// Evaluation sessions run in throwaway copies; no viewer daemon should outlive them.
+process.env.VIEWPORT_NO_DAEMON = "1";
+
 const ALLOWED_TOOLS = ["Read", "Glob", "Grep", "Edit", "Write", "MultiEdit", "Task", "Agent", "Skill", "mcp__plugin_viewport_viewport"];
 
 interface ClaudeResult {

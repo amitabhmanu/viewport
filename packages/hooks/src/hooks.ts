@@ -18,6 +18,7 @@ import {
   writeModel,
   writeModelFromAgent,
 } from "@viewport/core";
+import { isHealthy, readLock, spawnDaemon } from "@viewport/viewportd";
 
 /** The fields of Claude Code's hook input that these hooks read. */
 export interface HookInput {
@@ -54,6 +55,18 @@ function list(items: string[], limit = 5): string {
 /** The rule every session starts with. Kept short: it is paid for in every session's context. */
 export const DECISION_RULE =
   "When you choose between real alternatives that shape the system (where a new capability lives, a dependency between components, a data store, a protocol, a library that is hard to swap), log it with the viewport ledger_append tool when you make it (the viewport-decisions skill says how), and keep the model current with model_upsert. Do not stop to ask; keep building.";
+
+/**
+ * Starts the repo's viewer daemon in the background if it is not running. Never
+ * waits for it, so a session starts at the same speed either way. Off when
+ * VIEWPORT_NO_DAEMON is set (tests and evaluation runs).
+ */
+export async function startViewer(root: string, script: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
+  if (env.VIEWPORT_NO_DAEMON || !existsSync(script)) return;
+  const lock = await readLock(root);
+  if (lock !== undefined && (await isHealthy(lock))) return;
+  spawnDaemon(root, script);
+}
 
 export async function sessionStart(root: string): Promise<HookOutput> {
   const paths = viewportPaths(root);

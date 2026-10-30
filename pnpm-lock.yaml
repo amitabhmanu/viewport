@@ -66,6 +66,9 @@ importers:
       '@viewport/core':
         specifier: workspace:*
         version: link:../core
+      '@viewport/viewportd':
+        specifier: workspace:*
+        version: link:../viewportd
       tree-sitter-python:
         specifier: ^0.25.0
         version: 0.25.0
@@ -92,7 +95,14 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
-  packages/viewportd: {}
+  packages/viewportd:
+    dependencies:
+      '@viewport/core':
+        specifier: workspace:*
+        version: link:../core
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
   packages/web: {}
 
