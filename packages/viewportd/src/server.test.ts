@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { initWorkspace, writeModelFromAgent } from "@viewport/core";
+import { initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { isHealthy, readLock, stopDaemon } from "./lock.js";
 import { type Daemon, startDaemon } from "./server.js";
@@ -79,6 +79,24 @@ describe("API", () => {
     expect(await (await api("/api/changes")).json()).toMatchObject({ since: 2, changes: [] });
     expect((await api("/api/seen", { method: "POST", body: JSON.stringify({ subjects: "x" }) })).status).toBe(400);
     expect(await (await api("/api/seen", { method: "POST", body: JSON.stringify({ all: true }) })).json()).toEqual({ ok: true });
+  });
+
+  it("logs each query and keeps pinned views", async () => {
+    await api("/api/trace?from=app.api&direction=downstream");
+    await api("/api/slice?mode=sync");
+    expect((await api("/api/slice?mode=nope")).status).toBe(400);
+    const pin = (await (await api("/api/pins", { method: "POST", body: JSON.stringify({ title: "API path", query: { q: "trace", from: "app.api" } }) })).json()) as { id: number };
+    expect(await (await api("/api/pins")).json()).toEqual([expect.objectContaining({ title: "API path", query: { q: "trace", from: "app.api" } })]);
+    expect((await api("/api/pins", { method: "POST", body: JSON.stringify({ title: "", query: {} }) })).status).toBe(400);
+    await api(`/api/pins?id=${pin.id}`, { method: "DELETE" });
+    expect(await (await api("/api/pins")).json()).toEqual([]);
+    const db = openState(viewportPaths(root).stateDb);
+    const events = db.prepare("SELECT subject, payload FROM events WHERE kind = 'query' ORDER BY id").all() as { subject: string | null; payload: string }[];
+    db.close();
+    expect(events.map((e) => [e.subject, JSON.parse(e.payload)])).toEqual([
+      ["app.api", { q: "trace", from: "app.api", direction: "downstream", nodes: 5 }],
+      [null, { q: "slice", mode: "sync", nodes: 5 }],
+    ]);
   });
 
   it("stores flags raised from the viewer", async () => {

@@ -2,7 +2,7 @@ import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appendDecision, initWorkspace, writeModelFromAgent } from "@viewport/core";
+import { appendDecision, initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { type Daemon, startDaemon } from "@viewport/viewportd";
 import { type Browser, type Page, chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -147,5 +147,32 @@ describe("viewer", () => {
     await page.locator("#D-001").click();
     await page.getByRole("radio", { name: "All" }).click();
     await expect.poll(() => page.locator(".decision.fresh h2").allTextContents()).toEqual(["Big call"]);
+  });
+
+  it("asks what depends on a part, pins the answer and logs the question", async () => {
+    await page.goto(`http://127.0.0.1:${daemon.port}/map?view=components:app&focus=app.storage`);
+    await page.getByRole("link", { name: "What depends on it" }).click();
+    await page.locator(".ask h2", { hasText: "What depends on storage" }).waitFor();
+    await node("app.api").waitFor();
+    expect(await page.locator(".ask [data-node]").count()).toBe(3);
+    await page.getByRole("button", { name: "Pin" }).click();
+    await page.locator(".pins li", { hasText: "What depends on storage" }).waitFor();
+
+    await page.getByRole("radio", { name: "Slice" }).click();
+    await page.getByLabel("Show").selectOption({ label: "Async dependencies" });
+    await page.getByRole("button", { name: "Ask", exact: true }).click();
+    await page.locator(".ask h2", { hasText: "Async dependencies" }).waitFor();
+    await node("app.notifications").waitFor();
+
+    await page.locator(".pins a", { hasText: "What depends on storage" }).click();
+    await node("app.api").waitFor();
+    expect(page.url()).toContain("direction=upstream");
+    await node("app.orders").click();
+    await expect.poll(() => page.url()).toContain("/map?view=components%3Aapp&focus=app.orders");
+
+    const db = openState(viewportPaths(root).stateDb);
+    const asked = db.prepare("SELECT payload FROM events WHERE kind = 'query'").all() as { payload: string }[];
+    db.close();
+    expect(asked.map((e) => JSON.parse(e.payload).q)).toEqual(["trace", "slice", "trace"]);
   });
 });

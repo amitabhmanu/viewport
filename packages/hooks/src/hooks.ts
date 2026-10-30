@@ -7,6 +7,7 @@ import {
   applyReport,
   coverage,
   listSources,
+  logEvent,
   openState,
   readConfig,
   readLedger,
@@ -141,7 +142,7 @@ export async function postToolUse(root: string, input: HookInput): Promise<HookO
 /** Records the edit last, with the time since the process started, so evaluation can track hook cost. */
 function recordEdit(state: DatabaseSync, file: string, input: HookInput): void {
   const payload = { session: input.session_id ?? null, tool: input.tool_name, ms: Math.round(performance.now()) };
-  state.prepare("INSERT INTO events (at, kind, subject, payload) VALUES (?, 'edit', ?, ?)").run(new Date().toISOString(), file, JSON.stringify(payload));
+  logEvent(state, "edit", file, payload);
 }
 
 /** Hands pending flags to Claude, oldest first, and marks them delivered so each is passed on once. */
