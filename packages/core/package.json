@@ -6,7 +6,8 @@
   "exports": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "gen:schema": "tsx src/gen-schema.ts"
+    "gen:schema": "tsx src/gen-schema.ts",
+    "build": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "picomatch": "^4.0.7",

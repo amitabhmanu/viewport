@@ -59,7 +59,7 @@ export async function verify(root: string, model: Model, config: Config, options
   };
   if (!config.languages.includes("python")) report.notes.push("only Python imports are scanned so far");
   if (!incremental) {
-    const fresh = await checkFreshness(root, model);
+    const fresh = await checkFreshness(root, model, cov.owner);
     report.staleComponents = fresh.stale;
     report.unknownFreshness = fresh.unknown;
     if (fresh.skipped) report.notes.push(`freshness skipped: ${fresh.skipped}`);
@@ -110,4 +110,4 @@ export type { ComponentDependency, DependencyDiff, ImportEvidence } from "./depe
 export { extractPythonImports, resolvePythonImport } from "./python.js";
 export type { RawImport } from "./python.js";
 export { coverage, listSources } from "./sources.js";
-export { checkFreshness } from "./freshness.js";
+export { checkFreshness, fingerprintFiles, filesByComponent, headCommit } from "./freshness.js";

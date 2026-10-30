@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Config, type Model } from "../schema.js";
 import { shopModel, tempDir } from "../test-helpers.js";
-import { applyReport, isClean, verify } from "./index.js";
+import { applyReport, coverage, filesByComponent, fingerprintFiles, isClean, listSources, verify } from "./index.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../../fixtures/py-shop", import.meta.url));
 const config = Config.parse({ version: 1, sources: ["src/**/*.py"], languages: ["python"] });
@@ -28,7 +28,7 @@ describe("verify (full) on py-shop", () => {
     expect(report.doubleClaimed).toEqual([]);
     expect(pairs(report)).toEqual(["app.orders->app.payments", "app.orders->app.storage", "app.storage->app.orders"]);
     expect(report.unsupportedEdges).toEqual([]);
-    expect(report.notes).toContain("freshness skipped: not a git work tree");
+    expect(report.unknownFreshness).toHaveLength(5);
   });
 
   it("points at the import that proves a dependency", async () => {
@@ -55,6 +55,17 @@ describe("verify (full) on py-shop", () => {
     if (api?.kind === "component") api.paths.push("src/shop/orders/models.py");
     const report = await verify(root, model, config);
     expect(report.doubleClaimed).toEqual([{ file: "src/shop/orders/models.py", components: ["app.api", "app.orders"] }]);
+  });
+});
+
+describe("edge modes", () => {
+  it("lets a data edge cover an import but does not require one", async () => {
+    const model = completeShopModel();
+    for (const e of model.edges) if (e.kind === "depends_on" && e.from === "app.orders" && e.to === "app.storage") e.mode = "data";
+    model.edges.push({ kind: "depends_on", from: "app.api", to: "app.storage", mode: "data", source: "agent", sync: "unverified" });
+    const report = await verify(root, model, config);
+    expect(report.missingDependencies).toEqual([]);
+    expect(report.unsupportedEdges).toEqual([]);
   });
 });
 
@@ -106,11 +117,25 @@ describe("freshness", () => {
   });
 });
 
+describe("fingerprints", () => {
+  it("mark a component stale when its files change, without git", async () => {
+    const model = completeShopModel();
+    const report = await verify(root, model, config);
+    expect(report.unknownFreshness).toHaveLength(5);
+    await fingerprintAll(model);
+    expect((await verify(root, model, config)).staleComponents).toEqual([]);
+    await writeFile(join(root, "src/shop/storage/db.py"), "# changed\n");
+    const after = await verify(root, model, config);
+    expect(after.staleComponents).toEqual(["app.storage"]);
+    expect(after.unknownFreshness).toEqual([]);
+  });
+});
+
 describe("applyReport", () => {
   it("marks flagged components and edges stale and the rest ok", async () => {
     const model = shopModel();
     model.edges.push({ kind: "depends_on", from: "app.api", to: "app.storage", mode: "sync", source: "agent", sync: "unverified" });
-    for (const n of model.nodes) if (n.kind === "component") n.changedAt = "abc";
+    await fingerprintAll(model);
     const report = await verify(root, model, config);
     const next = applyReport(model, report);
     const sync = (id: string) => next.nodes.find((n) => n.id === id)?.sync;
@@ -135,4 +160,10 @@ function completeShopModel(changedAt?: string): Model {
   }
   if (changedAt) for (const n of model.nodes) if (n.kind === "component") n.changedAt = changedAt;
   return model;
+}
+
+/** Fingerprints every component against the current files, as `viewport model write` does. */
+async function fingerprintAll(model: Model): Promise<void> {
+  const owned = filesByComponent(coverage(await listSources(root, config), model).owner);
+  for (const n of model.nodes) if (n.kind === "component") n.fingerprint = await fingerprintFiles(root, owned.get(n.id) ?? []);
 }
