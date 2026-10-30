@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { ConfigMissingError, readConfig } from "../config-store.js";
 import { readLedger } from "../ledger.js";
@@ -23,7 +25,8 @@ Commands:
   status                       Model summary, full verification and ledger
   verify [--changed F]...      Verify the model against the code (--apply records sync states)
   model show                   Print the model as canonical JSON
-  model write [--reviewed ID]  Validate, stamp, verify and write a model read from stdin
+  model write [--from FILE] [--reviewed ID]
+                               Validate, stamp, verify and write a model (from FILE or stdin)
   query get <id>
   query trace <from> [--to X] [--upstream]
   query slice [--externals] [--mode M] [--sync S] [--decided-by D]
@@ -46,6 +49,7 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
       apply: { type: "boolean", default: false },
       check: { type: "boolean", default: false },
       reviewed: { type: "string", multiple: true },
+      from: { type: "string" },
       to: { type: "string" },
       upstream: { type: "boolean", default: false },
       externals: { type: "boolean", default: false },
@@ -97,7 +101,8 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
           return 0;
         }
         if (sub === "write") {
-          const incoming = JSON.parse(await io.readStdin()) as unknown;
+          const text = values.from !== undefined ? await readFile(resolve(root, values.from), "utf8") : await io.readStdin();
+          const incoming = JSON.parse(text) as unknown;
           const result = await writeModelFromAgent(root, incoming, values.reviewed ?? []);
           print({ revision: result.model.revision, stamped: result.stamped, report: result.report }, () =>
             [

@@ -107,6 +107,15 @@ describe("viewport CLI", () => {
     expect(reviewed.report.staleComponents).toEqual([]);
   });
 
+  it("model write reads a draft file with --from", async () => {
+    await cli(["init"]);
+    await mkdir(join(root, ".viewport/local"), { recursive: true });
+    await writeFile(join(root, ".viewport/local/model-draft.json"), JSON.stringify(SHOP));
+    const r = await cli(["model", "write", "--from", ".viewport/local/model-draft.json", "--json"]);
+    expect(r.code).toBe(0);
+    expect((JSON.parse(r.out) as { revision: number }).revision).toBe(1);
+  });
+
   it("model write rejects an invalid model with readable errors and changes nothing", async () => {
     await cli(["init"]);
     const before = await readFile(join(root, ".viewport/model.json"), "utf8");
