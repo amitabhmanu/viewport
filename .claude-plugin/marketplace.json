@@ -1,0 +1,13 @@
+{
+  "name": "viewport-dev",
+  "owner": {
+    "name": "Amitabh Manu"
+  },
+  "plugins": [
+    {
+      "name": "viewport",
+      "source": "./",
+      "description": "Viewport plugin, installed from this checkout for local development."
+    }
+  ]
+}
