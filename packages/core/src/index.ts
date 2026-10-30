@@ -11,3 +11,5 @@ export * from "./config-store.js";
 export * from "./workspace.js";
 export { runCli } from "./cli/run.js";
 export type { CliIo } from "./cli/run.js";
+export * from "./model-edit.js";
+export * from "./engage.js";

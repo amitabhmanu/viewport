@@ -3,6 +3,7 @@
     "target": "ES2023",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "customConditions": ["viewport-src"],
     "lib": ["ES2023"],
     "strict": true,
     "noUncheckedIndexedAccess": true,

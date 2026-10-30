@@ -26,7 +26,7 @@ pnpm check   # typecheck, lint, test
 
 ## Install the plugin from this checkout
 
-The plugin runs the CLI from this checkout, so build it first:
+The plugin runs the CLI and the MCP server from this checkout, so build them first:
 
 ```sh
 pnpm install && pnpm build
@@ -45,3 +45,5 @@ Or, from GitHub:
 In a Python repo, run `/viewport:init` in Claude Code. It creates `.viewport/` (config, model, and a `.gitignore` entry for local state), and the `viewport-modeler` agent builds the first model. `/viewport:status` shows how well the model matches the code.
 
 The CLI also works on its own: `bin/viewport status`, `bin/viewport verify --changed <file>`, `bin/viewport query trace <from> --to <to>`, and `bin/viewport --help` for the rest.
+
+The plugin also starts the `viewport` MCP server, which gives Claude the model and ledger as tools: `model_get`, `model_view`, `model_trace`, `model_slice`, `ledger_get` and `flags_pending` to read, and `model_upsert`, `model_remove`, `ledger_append`, `engage_write` and `flags_resolve` to write. Every write is validated against the schema and verified against the code, and `ledger_append` computes a decision's blast radius from the model.
