@@ -142,7 +142,10 @@ describe("applyReport", () => {
     expect(sync("app.orders")).toBe("stale");
     expect(sync("app.storage")).toBe("stale");
     expect(sync("app.api")).toBe("ok");
-    expect(next.edges.find((e) => e.to === "app.storage" && e.from === "app.api")?.sync).toBe("stale");
+    const edge = (from: string, to: string) => next.edges.find((e) => e.kind === "depends_on" && e.from === from && e.to === to)?.sync;
+    expect(edge("app.api", "app.storage")).toBe("stale");
+    expect(edge("app.api", "app.orders")).toBe("ok");
+    expect(edge("app.payments", "payment-provider")).toBe("unverified");
   });
 });
 

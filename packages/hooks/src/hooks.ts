@@ -51,7 +51,7 @@ function list(items: string[], limit = 5): string {
 
 /** The rule every session starts with. Kept short: it is paid for in every session's context. */
 export const DECISION_RULE =
-  "When you choose between real alternatives that shape the system (a new component or folder, a dependency between components, a data store, a protocol, a library that is hard to swap), log it with the viewport ledger_append tool when you make it, and keep the model current with model_upsert. Do not stop to ask; keep building.";
+  "When you choose between real alternatives that shape the system (a new component or folder, a dependency between components, a data store, a protocol, a library that is hard to swap), log it with the viewport ledger_append tool when you make it (the viewport-decisions skill says how), and keep the model current with model_upsert. Do not stop to ask; keep building.";
 
 export async function sessionStart(root: string): Promise<HookOutput> {
   const paths = viewportPaths(root);

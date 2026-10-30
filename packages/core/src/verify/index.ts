@@ -97,6 +97,7 @@ export function applyReport(model: Model, report: VerificationReport): Model {
   const staleEdges = new Set(report.unsupportedEdges);
   const unknown = new Set(report.unknownFreshness);
   const full = report.scope === "full";
+  const graphKinds = new Map(model.nodes.map((n) => [n.id, n.kind]));
 
   const nodes = model.nodes.map((n): ModelNode => {
     if (n.kind !== "component") return n;
@@ -106,6 +107,8 @@ export function applyReport(model: Model, report: VerificationReport): Model {
   });
   const edges = model.edges.map((e): ModelEdge => {
     if (staleEdges.has(edgeKey(e))) return { ...e, sync: "stale" };
+    // A full scan checks every sync or async edge between components against imports.
+    if (full && e.kind === "depends_on" && e.mode !== "data" && graphKinds.get(e.from) === "component" && graphKinds.get(e.to) === "component") return { ...e, sync: "ok" };
     return e;
   });
   return { ...model, nodes, edges };

@@ -43,10 +43,10 @@ Or, from GitHub:
 
 ## Using it
 
-In a Python repo, run `/viewport:init` in Claude Code. It creates `.viewport/` (config, model, and a `.gitignore` entry for local state), and the `viewport-modeler` agent builds the first model. `/viewport:status` shows how well the model matches the code.
+In a Python repo, run `/viewport:init` in Claude Code. It creates `.viewport/` (config, model, and a `.gitignore` entry for local state), and the `viewport-modeler` agent builds the first model. `/viewport:status` shows how well the model matches the code, and `/viewport:why <id>` explains a part of the system from the decision ledger. While building, Claude logs decisions as the `viewport-decisions` skill describes.
 
 The CLI also works on its own: `bin/viewport status`, `bin/viewport verify --changed <file>`, `bin/viewport query trace <from> --to <to>`, and `bin/viewport --help` for the rest.
 
-The plugin also starts the `viewport` MCP server, which gives Claude the model and ledger as tools: `model_get`, `model_view`, `model_trace`, `model_slice`, `ledger_get` and `flags_pending` to read, and `model_upsert`, `model_remove`, `ledger_append`, `engage_write` and `flags_resolve` to write. Every write is validated against the schema and verified against the code, and `ledger_append` computes a decision's blast radius from the model.
+The plugin also starts the `viewport` MCP server, which gives Claude the model and ledger as tools: `model_get`, `model_view`, `model_trace`, `model_slice`, `ledger_get`, `model_verify` and `flags_pending` to read, and `model_upsert`, `model_remove`, `ledger_append`, `engage_write` and `flags_resolve` to write; `model_verify` checks the model against the code without changing it. Every write is validated against the schema and verified against the code, and `ledger_append` computes a decision's blast radius from the model.
 
 Hooks keep the model in step while Claude works. At session start Claude gets a short overview of the model and the rule for logging decisions. After each edit, Claude hears about it only if the file belongs to no component or the developer has flagged something. Before Claude finishes, the Stop hook blocks once if that session's edits left files unclaimed, added dependencies the model lacks, or changed modeled components. After the `viewport-modeler` agent runs, the model is re-verified and saved as a new revision.

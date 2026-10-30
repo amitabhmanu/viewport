@@ -79,6 +79,7 @@ describe("tool list", () => {
       "model_slice",
       "model_trace",
       "model_upsert",
+      "model_verify",
       "model_view",
     ]);
     for (const t of tools) expect(t.name).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
@@ -103,6 +104,14 @@ describe("model tools", () => {
     });
     const views = (await call("model_view", { name: "components:app", level: "simple" })).json() as unknown as { elements: string[] }[];
     expect(views.flatMap((v) => v.elements)).toEqual(expect.arrayContaining(COMPONENTS.map((c) => `app.${c}`)));
+  });
+
+  it("verifies without writing", async () => {
+    const edges = SHOP.edges.filter((e) => !(e.from === "app.orders" && e.to === "app.storage"));
+    await call("model_upsert", { ...SHOP, edges });
+    const checked = await call("model_verify");
+    expect(checked.json()).toMatchObject({ revision: 1, findings: { missingDependencies: [expect.stringMatching(/^app.orders -> app.storage/)] } });
+    expect((await call("model_verify")).json()).toMatchObject({ revision: 1 });
   });
 
   it("reports a missing dependency when the model omits one", async () => {

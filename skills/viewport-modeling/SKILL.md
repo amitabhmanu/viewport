@@ -5,7 +5,7 @@ description: Schema and rules for Viewport's system model (.viewport/model.json)
 
 # Viewport system model
 
-The model is a typed graph in `.viewport/model.json`. Views a developer reads are generated from it, and deterministic verification checks it against the code. The full JSON Schema is in `schema.json` next to this file. Never edit `model.json` by hand: write it with `viewport model write`, which validates, fingerprints changed components, verifies and records sync states.
+The model is a typed graph in `.viewport/model.json`. Views a developer reads are generated from it, and deterministic verification checks it against the code. The full JSON Schema is in `schema.json` next to this file. Never edit `model.json` by hand: change it with the `model_upsert` and `model_remove` tools (or `viewport model write` from the command line), which validate, fingerprint changed components, verify and record sync states. `model_verify` reports findings without changing anything.
 
 ## Nodes
 
@@ -46,4 +46,4 @@ Edges carry no `id`; they are identified by their key.
 - **double-claimed**: two components' globs overlap. Narrow one.
 - **missing dependency** `a -> b (file:line)`: code in `a` imports code in `b`, but there is no `depends_on` edge. Add it with the right mode, or move paths if the boundary is wrong.
 - **unsupported edge**: a `sync`/`async` edge between components that no import backs. Remove it, or change its mode to `data` if the dependency is real but not an import.
-- **changed since modeled**: the component's files changed after it was last written. Review it; if nothing needs to change, write with `--reviewed <id>`.
+- **changed since modeled**: the component's files changed after it was last written. Review it; if nothing needs to change, pass its id in `model_upsert`'s `reviewed` list (or `--reviewed <id>` on the command line).
