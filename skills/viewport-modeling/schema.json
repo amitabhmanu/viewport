@@ -22,6 +22,29 @@
           "minItems": 1,
           "type": "array"
         },
+        "python": {
+          "default": {
+            "roots": [
+              "src",
+              "."
+            ]
+          },
+          "properties": {
+            "roots": {
+              "default": [
+                "src",
+                "."
+              ],
+              "items": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "type": "object"
+        },
         "sources": {
           "items": {
             "minLength": 1,
