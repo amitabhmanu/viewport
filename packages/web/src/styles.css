@@ -137,3 +137,21 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .edge.fresh.async { stroke-dasharray: 6 4; }
 .node.fresh rect { stroke: var(--accent); stroke-width: 2; }
 .node .badge { fill: var(--accent); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+
+a.button { display: inline-block; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }
+a.button:hover { border-color: var(--accent); }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.ask { display: flex; min-height: calc(100vh - 49px); }
+.ask-side { width: 280px; flex-shrink: 0; border-right: 1px solid var(--line); background: var(--surface); padding: 16px; }
+.ask-form { display: flex; flex-direction: column; gap: 10px; }
+.ask-form label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.ask-form select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+.ask-form .levels { margin-left: 0; }
+.ask-form button[type="submit"] { align-self: flex-start; }
+.pins { list-style: none; padding: 0; margin: 0; }
+.pins li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.pins li.here a { font-weight: 600; }
+@media (max-width: 720px) {
+  .ask { flex-direction: column; }
+  .ask-side { width: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+}

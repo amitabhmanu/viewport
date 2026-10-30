@@ -61,7 +61,7 @@ export function App() {
         {tab === "/" && <TodayPage go={go} />}
         {tab === "/map" && <MapPage params={route.params} go={go} />}
         {tab === "/ledger" && <LedgerPage />}
-        {tab === "/ask" && <AskPage />}
+        {tab === "/ask" && <AskPage params={route.params} go={go} />}
       </main>
     </LiveContext.Provider>
   );

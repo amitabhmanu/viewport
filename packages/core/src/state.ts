@@ -72,6 +72,14 @@ export const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE flags ADD COLUMN decision_id TEXT;
   `,
+  `
+  CREATE TABLE pins (
+    id INTEGER PRIMARY KEY,
+    at TEXT NOT NULL,
+    title TEXT NOT NULL,
+    query TEXT NOT NULL UNIQUE
+  );
+  `,
 ];
 
 /** Opens (creating if needed) state.db in WAL mode and applies pending migrations. */

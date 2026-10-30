@@ -1,6 +1,7 @@
 import type { Change, Level, ModelNode } from "@viewport/core";
-import { useMemo, useState } from "react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { api } from "./api.js";
+import { askHref } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
 import { CHANGE_LABEL, KIND_LABEL, partShowing, partSummary, seenWith, subtitle, trail, viewTitle, zoomTarget } from "./labels.js";
@@ -133,7 +134,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             </div>
           )}
         </div>
-        {focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} />}
+        {focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} onGo={go} />}
       </div>
     </section>
   );
@@ -146,14 +147,23 @@ function NodePanel({
   level,
   onZoom,
   onPick,
+  onGo,
 }: {
   node: ModelNode;
   nodes: Map<string, ModelNode>;
   change: Change | undefined;
-  level: Level; onZoom: (id: string) => void; onPick: (id: string) => void }) {
+  level: Level;
+  onZoom: (id: string) => void;
+  onPick: (id: string) => void;
+  onGo: (to: string) => void;
+}) {
   const live = useLive();
   const detail = useLoad(() => api.node(node.id), [node.id, live.model]);
   const [text, setText] = useState("");
+  const follow = (e: MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    onGo(e.currentTarget.getAttribute("href")!);
+  };
   const [sent, setSent] = useState(false);
   const d = detail.data;
   return (
@@ -166,7 +176,19 @@ function NodePanel({
       {node.kind === "component" && node.sync !== "ok" && (
         <p className="warn">{node.sync === "stale" ? "The code changed since this was modeled." : "Not yet checked against the code."}</p>
       )}
-      {zoomTarget(node) && <button onClick={() => onZoom(node.id)}>Look inside</button>}
+      <div className="actions">
+        {zoomTarget(node) && <button onClick={() => onZoom(node.id)}>Look inside</button>}
+        {node.kind !== "system" && node.kind !== "actor" && (
+          <>
+            <a className="button" href={askHref({ q: "trace", from: node.id, direction: "upstream" })} onClick={follow}>
+              What depends on it
+            </a>
+            <a className="button" href={askHref({ q: "trace", from: node.id, direction: "downstream" })} onClick={follow}>
+              What it depends on
+            </a>
+          </>
+        )}
+      </div>
       {node.kind === "component" && (
         <>
           <h3>Code</h3>

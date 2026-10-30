@@ -1,4 +1,4 @@
-import type { ChangesSince, Decision, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { AskQuery, ChangesSince, Decision, Pin, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -50,6 +50,14 @@ export const api = {
   changes: () => call<ChangesSince>("/api/changes"),
   seen: (subjects: string[]) => call<{ ok: true }>("/api/seen", { method: "POST", body: JSON.stringify({ subjects }) }),
   seenAll: () => call<{ ok: true }>("/api/seen", { method: "POST", body: JSON.stringify({ all: true }) }),
+  ask: (query: AskQuery, quiet = false) => {
+    const { q: kind, ...rest } = query;
+    const params = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, String(v)]));
+    return call<Subgraph>(`/api/${kind}?${q({ ...params, ...(quiet ? { quiet: "1" } : {}) })}`);
+  },
+  pins: () => call<Pin[]>("/api/pins"),
+  pin: (title: string, query: AskQuery) => call<Pin>("/api/pins", { method: "POST", body: JSON.stringify({ title, query }) }),
+  unpin: (id: number) => call<{ ok: true }>(`/api/pins?${q({ id: String(id) })}`, { method: "DELETE" }),
   flag: (subject: string, text: string) => call<Flag>("/api/flags", { method: "POST", body: JSON.stringify({ subject, text }) }),
 };
 

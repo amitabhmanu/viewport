@@ -5,13 +5,19 @@ import { type IncomingMessage, type ServerResponse, createServer } from "node:ht
 import type { AddressInfo } from "node:net";
 import { extname, join, normalize, sep } from "node:path";
 import {
+  AskQuery,
   ConfigMissingError,
   type Level,
   ModelGraph,
   QueryError,
+  type SliceFilter,
+  type TraceOptions,
   type ViewName,
+  addPin,
   changesSince,
   get,
+  listPins,
+  logEvent,
   markAllSeen,
   markSeen,
   openState,
@@ -19,6 +25,7 @@ import {
   readConfig,
   readLedger,
   readModel,
+  removePin,
   slice,
   trace,
   unresolvedFlags,
@@ -104,18 +111,27 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
         if (!LEVELS.has(level)) throw new HttpError(400, `unknown level '${level}'`);
         return view(await graph(), need("name") as ViewName, level as Level);
       }
-      case "GET /api/trace": {
-        const to = q.get("to");
-        return trace(await graph(), need("from"), { direction: q.get("direction") === "upstream" ? "upstream" : "downstream", ...(to ? { to } : {}) });
-      }
+      case "GET /api/trace":
       case "GET /api/slice": {
-        const filter = {
-          ...(q.get("externals") === "true" ? { externals: true } : {}),
-          ...(q.get("mode") ? { mode: q.get("mode") as "sync" } : {}),
-          ...(q.get("sync") ? { sync: q.get("sync") as "ok" } : {}),
-          ...(q.get("decidedBy") ? { decidedBy: q.get("decidedBy")! } : {}),
-        };
-        return slice(await graph(), filter);
+        const query = askFrom(url.pathname === "/api/trace" ? "trace" : "slice", q);
+        const result = query.q === "trace" ? trace(await graph(), query.from, query as TraceOptions) : slice(await graph(), query as SliceFilter);
+        // The viewer re-runs a shown query when the model changes; only the asking is logged.
+        if (q.get("quiet") !== "1") withState((db) => logEvent(db, "query", query.q === "trace" ? query.from : null, { ...query, nodes: result.nodes.length }));
+        return result;
+      }
+      case "GET /api/pins":
+        return withState((db) => listPins(db));
+      case "POST /api/pins": {
+        const body = JSON.parse(await readBody(req)) as { title?: unknown; query?: unknown };
+        if (typeof body.title !== "string" || body.title.trim() === "") throw new HttpError(400, "a pin needs a title");
+        const title = body.title.trim();
+        const query = AskQuery.parse(body.query);
+        return withState((db) => addPin(db, title, query));
+      }
+      case "DELETE /api/pins": {
+        const id = Number(need("id"));
+        withState((db) => removePin(db, id));
+        return { ok: true };
       }
       case "GET /api/ledger":
         return readLedger(paths.ledger);
@@ -255,6 +271,13 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };
+}
+
+/** A trace or slice from query parameters; unknown values fail validation with a 400. */
+function askFrom(kind: "trace" | "slice", q: URLSearchParams): AskQuery {
+  const pick = (...names: string[]) => Object.fromEntries(names.flatMap((n) => (q.get(n) ? [[n, q.get(n)]] : [])));
+  if (kind === "trace") return AskQuery.parse({ q: "trace", ...pick("from", "to", "direction") });
+  return AskQuery.parse({ q: "slice", ...pick("mode", "sync", "decidedBy"), ...(q.get("externals") === "true" ? { externals: true } : {}) });
 }
 
 async function readBody(req: IncomingMessage): Promise<string> {
