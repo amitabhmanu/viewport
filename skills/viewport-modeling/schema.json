@@ -1,0 +1,573 @@
+{
+  "$defs": {
+    "config": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "ignore": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "languages": {
+          "items": {
+            "enum": [
+              "python",
+              "typescript"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "sources": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "version": {
+          "const": 1,
+          "type": "number"
+        }
+      },
+      "required": [
+        "version",
+        "sources",
+        "languages"
+      ],
+      "type": "object"
+    },
+    "decision": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "affects": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "assumptions": {
+          "default": [],
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "at": {
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+          "type": "string"
+        },
+        "blastRadius": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "chosen": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "commit": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^D-\\d{3,}$",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "properties": {
+              "name": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "tradeoff": {
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "tradeoff"
+            ],
+            "type": "object"
+          },
+          "minItems": 2,
+          "type": "array"
+        },
+        "reversibility": {
+          "enum": [
+            "easy",
+            "costly",
+            "one-way"
+          ],
+          "type": "string"
+        },
+        "supersedes": {
+          "pattern": "^D-\\d{3,}$",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "why": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "at",
+        "title",
+        "options",
+        "chosen",
+        "why",
+        "reversibility",
+        "blastRadius"
+      ],
+      "type": "object"
+    },
+    "model": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "edges": {
+          "items": {
+            "properties": {
+              "from": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "kind": {
+                "enum": [
+                  "contains",
+                  "depends_on",
+                  "uses",
+                  "decided_by"
+                ],
+                "type": "string"
+              },
+              "mode": {
+                "enum": [
+                  "sync",
+                  "async",
+                  "data"
+                ],
+                "type": "string"
+              },
+              "protocol": {
+                "minLength": 1,
+                "type": "string"
+              },
+              "source": {
+                "default": "agent",
+                "enum": [
+                  "agent",
+                  "verified"
+                ],
+                "type": "string"
+              },
+              "sync": {
+                "default": "unverified",
+                "enum": [
+                  "ok",
+                  "stale",
+                  "unverified"
+                ],
+                "type": "string"
+              },
+              "to": {
+                "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "from",
+              "to"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "nodes": {
+          "items": {
+            "oneOf": [
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "system",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "purpose": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "purpose"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "goal": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "actor",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "goal"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "external",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "protocol": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "role": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "role"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "container",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "role": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "tech": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "role"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "component",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "paths": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "role": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "tech": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "role",
+                  "paths"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "blastRadius": {
+                    "maximum": 9007199254740991,
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "decision",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "reversibility": {
+                    "enum": [
+                      "easy",
+                      "costly",
+                      "one-way"
+                    ],
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "reversibility",
+                  "blastRadius"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "type": "array"
+        },
+        "revision": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "version": {
+          "const": 1,
+          "type": "number"
+        }
+      },
+      "required": [
+        "version",
+        "revision",
+        "nodes",
+        "edges"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Viewport files"
+}
