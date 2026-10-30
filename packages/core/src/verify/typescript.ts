@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import { join, posix } from "node:path";
 import { Language, Parser, type Node } from "web-tree-sitter";
+import { initParser, wasmPath } from "./wasm.js";
 
 /** One import-like reference in a TypeScript or JavaScript file, before resolution. */
 export interface TsImport {
@@ -15,10 +15,9 @@ function tsParser(flavor: "ts" | "tsx"): Promise<Parser> {
   let p = parsers.get(flavor);
   if (!p) {
     p = (async () => {
-      const require = createRequire(import.meta.url);
-      await Parser.init();
+      await initParser();
       const file = flavor === "tsx" ? "tree-sitter-tsx.wasm" : "tree-sitter-typescript.wasm";
-      const language = await Language.load(require.resolve(`tree-sitter-typescript/${file}`));
+      const language = await Language.load(wasmPath(`tree-sitter-typescript/${file}`));
       const parser = new Parser();
       parser.setLanguage(language);
       return parser;

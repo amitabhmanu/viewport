@@ -1,6 +1,6 @@
-import { createRequire } from "node:module";
 import { posix } from "node:path";
 import { Language, Parser, type Node } from "web-tree-sitter";
+import { initParser, wasmPath } from "./wasm.js";
 
 /** One import statement as written, before resolution. */
 export interface RawImport {
@@ -17,9 +17,8 @@ let parserPromise: Promise<Parser> | undefined;
 
 function pythonParser(): Promise<Parser> {
   parserPromise ??= (async () => {
-    const require = createRequire(import.meta.url);
-    await Parser.init();
-    const language = await Language.load(require.resolve("tree-sitter-python/tree-sitter-python.wasm"));
+    await initParser();
+    const language = await Language.load(wasmPath("tree-sitter-python/tree-sitter-python.wasm"));
     const parser = new Parser();
     parser.setLanguage(language);
     return parser;

@@ -55,6 +55,25 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
 
+  packages/hooks:
+    dependencies:
+      '@viewport/core':
+        specifier: workspace:*
+        version: link:../core
+      tree-sitter-python:
+        specifier: ^0.25.0
+        version: 0.25.0
+      tree-sitter-typescript:
+        specifier: ^0.23.2
+        version: 0.23.2
+      web-tree-sitter:
+        specifier: ^0.27.1
+        version: 0.27.1
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   packages/mcp:
     dependencies:
       '@modelcontextprotocol/sdk':
