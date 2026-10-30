@@ -155,3 +155,13 @@ a.button:hover { border-color: var(--accent); }
   .ask { flex-direction: column; }
   .ask-side { width: auto; border-right: 0; border-bottom: 1px solid var(--line); }
 }
+
+.predict { margin-top: 8px; }
+.predict .ask-line { margin: 0 0 8px; font-weight: 500; }
+.choices { list-style: none; padding: 0; margin: 0 0 8px; display: grid; gap: 6px; }
+.choices button { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; }
+.choices button .muted { font-size: 13px; }
+.predict-cards { list-style: none; padding: 0; margin: 0; }
+.result { margin: 8px 0 0; font-weight: 500; }
+.result.right { color: #22a06b; }
+.result.wrong { color: var(--stale); }

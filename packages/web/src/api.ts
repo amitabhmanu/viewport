@@ -1,4 +1,4 @@
-import type { AskQuery, ChangesSince, Decision, Pin, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { AskQuery, ChangesSince, Decision, Pin, Prediction, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -55,6 +55,8 @@ export const api = {
     const params = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, String(v)]));
     return call<Subgraph>(`/api/${kind}?${q({ ...params, ...(quiet ? { quiet: "1" } : {}) })}`);
   },
+  predictions: () => call<Prediction[]>("/api/predictions"),
+  predict: (decisionId: string, guess?: string) => call<Prediction>("/api/predictions", { method: "POST", body: JSON.stringify({ decisionId, ...(guess !== undefined ? { guess } : {}) }) }),
   pins: () => call<Pin[]>("/api/pins"),
   pin: (title: string, query: AskQuery) => call<Pin>("/api/pins", { method: "POST", body: JSON.stringify({ title, query }) }),
   unpin: (id: number) => call<{ ok: true }>(`/api/pins?${q({ id: String(id) })}`, { method: "DELETE" }),

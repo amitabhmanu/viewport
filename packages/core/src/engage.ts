@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import type { Decision } from "./schema.js";
 
 export interface Flag {
   id: number;
@@ -95,4 +96,54 @@ export function writeQuizItems(db: DatabaseSync, items: QuizItemInput[], now = n
     throw err;
   }
   return ids;
+}
+
+export interface Prediction {
+  decisionId: string;
+  at: string;
+  /** The option the developer picked, or undefined when they skipped. */
+  guess?: string;
+  skipped: boolean;
+  correct?: boolean;
+}
+
+interface PredictionRow {
+  decision_id: string;
+  at: string;
+  guess: string | null;
+  skipped: number;
+  correct: number | null;
+}
+
+/**
+ * Stores the developer's guess at a decision before its choice is revealed, or that
+ * they skipped. One per decision: the first answer stands, so a reveal cannot be undone.
+ */
+export function recordPrediction(db: DatabaseSync, decision: Pick<Decision, "id" | "chosen" | "options">, guess: string | undefined, at = new Date().toISOString()): Prediction {
+  const existing = predictionFor(db, decision.id);
+  if (existing) return existing;
+  if (guess !== undefined && !decision.options.some((o) => o.name === guess)) throw new EngageError(`'${guess}' is not an option of ${decision.id}`);
+  const correct = guess === undefined ? null : guess === decision.chosen ? 1 : 0;
+  db.prepare("INSERT INTO predictions (at, decision_id, guess, skipped, correct) VALUES (?, ?, ?, ?, ?)").run(at, decision.id, guess ?? null, guess === undefined ? 1 : 0, correct);
+  return predictionFor(db, decision.id)!;
+}
+
+export function predictionFor(db: DatabaseSync, decisionId: string): Prediction | undefined {
+  const row = db.prepare("SELECT * FROM predictions WHERE decision_id = ? ORDER BY id LIMIT 1").get(decisionId) as PredictionRow | undefined;
+  return row && toPrediction(row);
+}
+
+export function listPredictions(db: DatabaseSync): Prediction[] {
+  const rows = db.prepare("SELECT * FROM predictions WHERE id IN (SELECT MIN(id) FROM predictions GROUP BY decision_id) ORDER BY id").all() as unknown as PredictionRow[];
+  return rows.map(toPrediction);
+}
+
+function toPrediction(row: PredictionRow): Prediction {
+  return {
+    decisionId: row.decision_id,
+    at: row.at,
+    ...(row.guess !== null ? { guess: row.guess } : {}),
+    skipped: row.skipped === 1,
+    ...(row.correct !== null ? { correct: row.correct === 1 } : {}),
+  };
 }

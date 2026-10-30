@@ -1,4 +1,4 @@
-import type { Change, Decision, Level, Model, ModelNode, SplitView } from "@viewport/core";
+import type { Change, Decision, Level, Model, ModelNode, Prediction, SplitView } from "@viewport/core";
 
 /** The line under a node's name. Simple says what it does; medium adds the technology; complex leads with it. */
 export function subtitle(node: ModelNode, level: Level): string {
@@ -79,4 +79,34 @@ export const CHANGE_LABEL: Record<Change["change"], string> = { added: "New", ch
 /** The ledger's order: widest reach first; among equals, the newest. */
 export function rank(decisions: Decision[]): Decision[] {
   return [...decisions].sort((a, b) => b.blastRadius - a.blastRadius || Date.parse(b.at) - Date.parse(a.at) || b.id.localeCompare(a.id));
+}
+
+const REACH: Record<Decision["reversibility"], number> = { "one-way": 3, costly: 2, easy: 1 };
+
+/**
+ * Decisions still waiting for a guess, most worth thinking about first: hard-to-undo
+ * calls with a wide reach, then the newest. Replaced decisions are left out.
+ * (Phase 4e folds in familiarity.)
+ */
+export function toPredict(ledger: Decision[], predictions: Prediction[]): Decision[] {
+  const done = new Set(predictions.map((p) => p.decisionId));
+  const replaced = new Set(ledger.flatMap((d) => (d.supersedes ? [d.supersedes] : [])));
+  return ledger
+    .filter((d) => !done.has(d.id) && !replaced.has(d.id))
+    .sort((a, b) => REACH[b.reversibility] * Math.max(1, b.blastRadius) - REACH[a.reversibility] * Math.max(1, a.blastRadius) || Date.parse(b.at) - Date.parse(a.at));
+}
+
+/**
+ * A decision's options in an order that does not give the answer away (agents tend
+ * to list their pick first), the same every time for the same decision.
+ */
+export function shuffledOptions(d: Pick<Decision, "id" | "options">): Decision["options"] {
+  let seed = [...d.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const out = [...d.options];
+  for (let i = out.length - 1; i > 0; i--) {
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    const j = seed % (i + 1);
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
 }

@@ -1,6 +1,6 @@
-import type { Change, Decision, Model, ModelNode, SplitView } from "@viewport/core";
+import type { Change, Decision, Model, ModelNode, Prediction, SplitView } from "@viewport/core";
 import { describe, expect, it } from "vitest";
-import { homeView, partShowing, partSummary, rank, seenWith, subtitle, trail, viewTitle, zoomTarget } from "./labels.js";
+import { homeView, partShowing, partSummary, rank, seenWith, shuffledOptions, subtitle, toPredict, trail, viewTitle, zoomTarget } from "./labels.js";
 
 const orders = { kind: "component", id: "app.orders", name: "Orders", role: "Takes orders", tech: "FastAPI", paths: ["src/**"], source: "agent", sync: "ok" } as ModelNode;
 const app = { kind: "container", id: "app", name: "App", role: "Runs the shop", source: "agent", sync: "ok" } as ModelNode;
@@ -73,5 +73,25 @@ describe("changes and ledger", () => {
       "D-003",
       "D-001",
     ]);
+  });
+});
+
+describe("predictions", () => {
+  const d = (id: string, blastRadius: number, reversibility: Decision["reversibility"], extra: Partial<Decision> = {}) =>
+    ({ id, blastRadius, reversibility, at: "2026-10-30T00:00:00Z", ...extra }) as Decision;
+
+  it("queues unanswered decisions, hard-to-undo and wide-reaching first", () => {
+    const ledger = [d("D-001", 4, "easy"), d("D-002", 2, "one-way"), d("D-003", 1, "costly"), d("D-004", 9, "one-way", { supersedes: "D-002" }), d("D-005", 5, "costly")];
+    const answered = [{ decisionId: "D-005" }] as Prediction[];
+    expect(toPredict(ledger, answered).map((x) => x.id)).toEqual(["D-004", "D-001", "D-003"]);
+  });
+
+  it("shuffles options the same way every time, keeping them all", () => {
+    const options = ["A", "B", "C", "D"].map((name) => ({ name, tradeoff: name }));
+    const once = shuffledOptions({ id: "D-007", options });
+    expect(shuffledOptions({ id: "D-007", options })).toEqual(once);
+    expect(once.map((o) => o.name).sort()).toEqual(["A", "B", "C", "D"]);
+    const firsts = new Set(Array.from({ length: 20 }, (_, i) => shuffledOptions({ id: `D-${100 + i}`, options })[0]!.name));
+    expect(firsts.size).toBeGreaterThan(1);
   });
 });

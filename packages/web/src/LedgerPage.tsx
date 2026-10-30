@@ -1,9 +1,10 @@
-import type { Decision } from "@viewport/core";
+import type { Decision, Prediction } from "@viewport/core";
 import { useEffect, useRef, useState } from "react";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { rank } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
+import { PredictPrompt, PredictionResult } from "./Predict.js";
 
 const FILTERS = [
   ["all", "All"],
@@ -18,6 +19,7 @@ const REVERSIBILITY: Record<Decision["reversibility"], string> = { "one-way": "O
 export function LedgerPage() {
   const live = useLive();
   const { data, error } = useLoad(api.ledger, [live.ledger]);
+  const predictions = useLoad(api.predictions, [live.state]);
   const { bySubject } = useChanges();
   const [filter, setFilter] = useState<Filter>("all");
   const scrolled = useRef(false);
@@ -31,7 +33,8 @@ export function LedgerPage() {
   }, [data]);
 
   if (error) return <p className="error page">{error}</p>;
-  if (!data) return <p className="muted page">Loading…</p>;
+  if (!data || !predictions.data) return <p className="muted page">Loading…</p>;
+  const guessed = new Map(predictions.data.map((p) => [p.decisionId, p]));
   const replaced = new Set(data.flatMap((d) => (d.supersedes ? [d.supersedes] : [])));
   const shown = rank(data).filter((d) => filter === "all" || d.reversibility === filter);
 
@@ -52,15 +55,18 @@ export function LedgerPage() {
       {data.length > 0 && shown.length === 0 && <p className="muted">No decisions match this filter.</p>}
       <ol className="ledger">
         {shown.map((d) => (
-          <DecisionCard key={d.id} d={d} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} />
+          <DecisionCard key={d.id} d={d} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} prediction={guessed.get(d.id)} />
         ))}
       </ol>
     </section>
   );
 }
 
-/** Every field is shown for now. Clicking a new decision marks it seen. */
-function DecisionCard({ d, isNew, replaced }: { d: Decision; isNew: boolean; replaced: boolean }) {
+/**
+ * Every field is shown once the developer has guessed or skipped; until then the
+ * choice and the reasons stay hidden. Clicking a new decision marks it seen.
+ */
+function DecisionCard({ d, isNew, replaced, prediction }: { d: Decision; isNew: boolean; replaced: boolean; prediction: Prediction | undefined }) {
   return (
     <li className={`decision${isNew ? " fresh" : ""}${replaced ? " replaced" : ""}`} id={d.id} onClick={() => isNew && markSeen([d.id])}>
       <div className="decision-head">
@@ -73,44 +79,57 @@ function DecisionCard({ d, isNew, replaced }: { d: Decision; isNew: boolean; rep
           {d.blastRadius}
         </span>
       </div>
-      <p>
-        <strong>Chose {d.chosen}.</strong> {d.why}
-      </p>
-      <div className="decision-body">
-        <h3>Options</h3>
-        <ul className="options">
-          {d.options.map((o) => (
-            <li key={o.name} className={o.name === d.chosen ? "chosen" : ""}>
-              <strong>{o.name}</strong>: {o.tradeoff}
-            </li>
-          ))}
-        </ul>
-        {d.affects.length > 0 && (
-          <>
-            <h3>Affects</h3>
-            <p>
-              {d.affects.map((a) => (
-                <code key={a}>{a} </code>
-              ))}
-            </p>
-          </>
-        )}
-        {d.assumptions.length > 0 && (
-          <>
-            <h3>Assumptions not yet confirmed</h3>
-            <ul className="assumptions">
-              {d.assumptions.map((a) => (
-                <li key={a}>{a}</li>
-              ))}
-            </ul>
-          </>
-        )}
-        <p className="muted">
-          {new Date(d.at).toLocaleString()}
-          {d.commit ? ` · ${d.commit.slice(0, 8)}` : ""}
-          {d.supersedes ? ` · replaces ${d.supersedes}` : ""}
-        </p>
-      </div>
+      {prediction === undefined && !replaced ? (
+        <PredictPrompt d={d} />
+      ) : (
+        <>
+          {prediction && <PredictionResult p={prediction} chosen={d.chosen} />}
+          <p>
+            <strong>Chose {d.chosen}.</strong> {d.why}
+          </p>
+          <DecisionBody d={d} />
+        </>
+      )}
     </li>
+  );
+}
+
+function DecisionBody({ d }: { d: Decision }) {
+  return (
+    <div className="decision-body">
+      <h3>Options</h3>
+      <ul className="options">
+        {d.options.map((o) => (
+          <li key={o.name} className={o.name === d.chosen ? "chosen" : ""}>
+            <strong>{o.name}</strong>: {o.tradeoff}
+          </li>
+        ))}
+      </ul>
+      {d.affects.length > 0 && (
+        <>
+          <h3>Affects</h3>
+          <p>
+            {d.affects.map((a) => (
+              <code key={a}>{a} </code>
+            ))}
+          </p>
+        </>
+      )}
+      {d.assumptions.length > 0 && (
+        <>
+          <h3>Assumptions not yet confirmed</h3>
+          <ul className="assumptions">
+            {d.assumptions.map((a) => (
+              <li key={a}>{a}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      <p className="muted">
+        {new Date(d.at).toLocaleString()}
+        {d.commit ? ` · ${d.commit.slice(0, 8)}` : ""}
+        {d.supersedes ? ` · replaces ${d.supersedes}` : ""}
+      </p>
+    </div>
   );
 }

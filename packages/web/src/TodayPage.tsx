@@ -1,8 +1,9 @@
-import type { Change, Model } from "@viewport/core";
+import type { Change, Decision, Model } from "@viewport/core";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
-import { CHANGE_LABEL, KIND_LABEL, homeView, seenWith } from "./labels.js";
+import { CHANGE_LABEL, KIND_LABEL, homeView, seenWith, toPredict } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
+import { PredictPrompt } from "./Predict.js";
 import { mapHref } from "./router.js";
 
 export function TodayPage({ go }: { go: (to: string) => void }) {
@@ -10,6 +11,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const model = useLoad(api.model, [live.model]);
   const ledger = useLoad(api.ledger, [live.ledger]);
   const flags = useLoad(api.flags, [live.state]);
+  const predictions = useLoad(api.predictions, [live.state]);
   const { changes } = useChanges();
   const error = model.error ?? ledger.error ?? flags.error;
   if (error) return <p className="error">{error}</p>;
@@ -45,6 +47,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
           </a>
         ))}
       </div>
+      {ledger.data && predictions.data && <PredictCards queue={toPredict(ledger.data, predictions.data)} go={go} />}
       <div className="section-head">
         <h2>What changed since you last looked</h2>
         {changes.length > 0 && <button onClick={() => void api.seenAll()}>Mark all as seen</button>}
@@ -103,5 +106,39 @@ function ChangeItem({ c, model, changes, go }: { c: Change; model: Model; change
         </>
       )}
     </li>
+  );
+}
+
+/** At most three new decisions to guess at, the most salient first. */
+function PredictCards({ queue, go }: { queue: Decision[]; go: (to: string) => void }) {
+  if (queue.length === 0) return null;
+  return (
+    <>
+      <div className="section-head">
+        <h2>Predict before you look</h2>
+        {queue.length > 3 && (
+          <a
+            href="/ledger"
+            onClick={(e) => {
+              e.preventDefault();
+              go("/ledger");
+            }}
+          >
+            {queue.length - 3} more in the Ledger
+          </a>
+        )}
+      </div>
+      <ul className="predict-cards">
+        {queue.slice(0, 3).map((d) => (
+          <li key={d.id} className="decision" data-decision={d.id}>
+            <div className="decision-head">
+              <span className="id">{d.id}</span>
+              <h2>{d.title}</h2>
+            </div>
+            <PredictPrompt d={d} />
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
