@@ -26,3 +26,21 @@ function sortKeys(value: unknown): unknown {
   }
   return value;
 }
+
+/** A file under .viewport/ that is not valid JSON or does not match its schema. */
+export class InvalidFileError extends Error {}
+
+/** Parses a .viewport/ file, naming the file and each failing field when it is wrong. */
+export function parseFile<T>(schema: { safeParse(v: unknown): { success: true; data: T } | { success: false; error: { issues: { path: PropertyKey[]; message: string }[] } } }, text: string, path: string): T {
+  const name = path.split(/[\\/]/).slice(-2).join("/");
+  let value: unknown;
+  try {
+    value = JSON.parse(text);
+  } catch (err) {
+    throw new InvalidFileError(`${name} is not valid JSON: ${(err as Error).message}`);
+  }
+  const parsed = schema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  const issues = parsed.error.issues.map((i) => `${i.path.length > 0 ? i.path.join(".") : "(top level)"}: ${i.message}`);
+  throw new InvalidFileError(`${name} is invalid: ${issues.join("; ")}`);
+}
