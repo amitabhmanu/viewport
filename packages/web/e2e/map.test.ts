@@ -159,7 +159,7 @@ describe("viewer", () => {
     await page.getByRole("button", { name: "Pin" }).click();
     await page.locator(".pins li", { hasText: "What depends on storage" }).waitFor();
 
-    await page.getByRole("radio", { name: "Slice" }).click();
+    await page.locator(".ask-form").getByLabel("Question").selectOption({ label: "Slice" });
     await page.getByLabel("Show").selectOption({ label: "Async dependencies" });
     await page.getByRole("button", { name: "Ask", exact: true }).click();
     await page.locator(".ask h2", { hasText: "Async dependencies" }).waitFor();
