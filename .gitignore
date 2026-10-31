@@ -4,3 +4,4 @@ dist/
 .viewport/local/
 __pycache__/
 eval/results/
+demo-out/
