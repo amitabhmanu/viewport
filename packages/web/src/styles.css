@@ -176,3 +176,12 @@ a.button:hover { border-color: var(--accent); }
 .flag-form input { flex: 1; min-width: 0; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
 .edge-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; pointer-events: stroke; outline: none; }
 .edge-hit:hover, .edge-hit:focus-visible { stroke: var(--accent); opacity: .25; }
+
+.takeaway { padding: 8px 10px; background: var(--accent-soft); border-radius: 6px; }
+.confidence { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; }
+.confidence button[aria-checked="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.answer-form { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.answer-form textarea { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+button:disabled { opacity: .5; cursor: default; }
+.quiz h2 { margin: 2px 0 4px; }
+.explaining { font-size: 13px; }

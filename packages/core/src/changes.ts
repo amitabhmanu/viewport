@@ -26,10 +26,13 @@ const CURSOR = "changes";
 const SEEN = "seen:";
 
 /** A node or edge's content without bookkeeping that changes on every verify. */
-function content(item: ModelNode | ModelEdge): string {
+export function content(item: ModelNode | ModelEdge): string {
   const { sync: _s, source: _o, ...rest } = item as Record<string, unknown>;
   delete rest.changedAt;
   delete rest.fingerprint;
+  // Explanations are about the system, not changes to it.
+  delete rest.takeaway;
+  delete rest.takeaways;
   return stableStringify(rest);
 }
 

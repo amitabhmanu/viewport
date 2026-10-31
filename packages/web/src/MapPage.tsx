@@ -5,7 +5,7 @@ import { askHref } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
 import { FlagBox, useFlags } from "./Flags.js";
-import { CHANGE_LABEL, KIND_LABEL, partShowing, partSummary, seenWith, subtitle, trail, viewTitle, zoomTarget } from "./labels.js";
+import { CHANGE_LABEL, KIND_LABEL, partShowing, partSummary, seenWith, subtitle, takeaway, trail, viewTitle, zoomTarget } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { mapHref } from "./router.js";
 
@@ -106,7 +106,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
         <div className="canvas">
           <p className="narrative">
             {parts.data.length > 1 && <strong>Part {index + 1} of {parts.data.length}. </strong>}
-            {partSummary(part, nodes)}
+            {takeaway(nodes.get(view.startsWith("components:") ? view.slice("components:".length) : ""), level) ?? partSummary(part, nodes)}
           </p>
           <Diagram
             part={part}
@@ -179,6 +179,7 @@ function NodePanel({
         {node.name} {change && <span className="tag fresh">{CHANGE_LABEL[change.change]}</span>}
       </h2>
       <p>{subtitle(node, level)}</p>
+      {takeaway(node, level) && <p className="takeaway">{takeaway(node, level)}</p>}
       {node.kind === "component" && node.sync !== "ok" && (
         <p className="warn">{node.sync === "stale" ? "The code changed since this was modeled." : "Not yet checked against the code."}</p>
       )}

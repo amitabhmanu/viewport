@@ -80,13 +80,32 @@ export const MIGRATIONS: readonly string[] = [
     query TEXT NOT NULL UNIQUE
   );
   `,
+  `
+  CREATE TABLE jobs (
+    id INTEGER PRIMARY KEY,
+    kind TEXT NOT NULL,
+    payload TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'running', 'done', 'failed')),
+    created_at TEXT NOT NULL,
+    started_at TEXT,
+    finished_at TEXT,
+    error TEXT
+  );
+  CREATE TABLE explained (
+    subject TEXT PRIMARY KEY,
+    hash TEXT NOT NULL,
+    at TEXT NOT NULL
+  );
+  ALTER TABLE quiz_items ADD COLUMN answer TEXT;
+  `,
 ];
 
 /** Opens (creating if needed) state.db in WAL mode and applies pending migrations. */
 export function openState(path: string): DatabaseSync {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const db = new DatabaseSync(path);
-  db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 2000;");
+  // busy_timeout first, so switching to WAL waits for another connection instead of failing.
+  db.exec("PRAGMA busy_timeout = 2000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
   db.exec("CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL)");
   const row = db.prepare("SELECT MAX(version) AS v FROM schema_version").get() as { v: number | null };
   const current = row.v ?? 0;

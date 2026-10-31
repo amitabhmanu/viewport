@@ -8,6 +8,8 @@ import { startDaemon } from "./server.js";
 
 const HOUR = 60 * 60 * 1000;
 const WEB_ROOT = fileURLToPath(new URL("../../web/dist/", import.meta.url));
+const PLUGIN = new URL("../../../", import.meta.url);
+const EXPLAINER = ["agents/viewport-explainer.md", "skills/viewport-explaining/SKILL.md"].map((f) => fileURLToPath(new URL(f, PLUGIN)));
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -35,6 +37,8 @@ switch (command) {
       webRoot: WEB_ROOT,
       idleMs: 8 * HOUR,
       onIdle: () => void shutdown(),
+      // Background jobs run Claude and cost tokens; VIEWPORT_NO_JOBS turns them off.
+      ...(process.env.VIEWPORT_NO_JOBS ? {} : { worker: { explainFiles: EXPLAINER } }),
     });
     await writeLock({ pid: process.pid, port: daemon.port, token: daemon.token, root, startedAt: new Date().toISOString() });
     const shutdown = async () => {

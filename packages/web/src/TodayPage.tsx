@@ -1,10 +1,11 @@
-import type { Change, Decision, Model } from "@viewport/core";
+import type { Change, Decision, Job, Model } from "@viewport/core";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { CHANGE_LABEL, KIND_LABEL, homeView, seenWith, toPredict } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { FLAG_STATUS } from "./Flags.js";
 import { PredictPrompt } from "./Predict.js";
+import { QuizCard } from "./Quiz.js";
 import { mapHref } from "./router.js";
 
 export function TodayPage({ go }: { go: (to: string) => void }) {
@@ -14,6 +15,9 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const flags = useLoad(api.allFlags, [live.state]);
   const predictions = useLoad(api.predictions, [live.state]);
   const { changes } = useChanges();
+  // The quiz is fetched once per visit: answering must not swap the card for the next one mid-read.
+  const quiz = useLoad(api.quiz, []);
+  const jobs = useLoad(api.jobs, [live.state, live.model]);
   const error = model.error ?? ledger.error ?? flags.error;
   if (error) return <p className="error">{error}</p>;
   if (!model.data) return <p className="muted page">Loading…</p>;
@@ -50,7 +54,20 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
           </a>
         ))}
       </div>
+      {(quiz.data ?? []).length > 0 && (
+        <>
+          <div className="section-head">
+            <h2>Check what you know</h2>
+          </div>
+          <ul className="predict-cards">
+            {quiz.data!.map((q) => (
+              <QuizCard key={q.id} item={q} subject={model.data!.nodes.find((n) => n.id === q.subject)?.name ?? q.subject} />
+            ))}
+          </ul>
+        </>
+      )}
       {ledger.data && predictions.data && <PredictCards queue={toPredict(ledger.data, predictions.data)} go={go} />}
+      <ExplainerStatus jobs={jobs.data ?? []} />
       <div className="section-head">
         <h2>What changed since you last looked</h2>
         {changes.length > 0 && <button onClick={() => void api.seenAll()}>Mark all as seen</button>}
@@ -174,5 +191,17 @@ function PredictCards({ queue, go }: { queue: Decision[]; go: (to: string) => vo
         ))}
       </ul>
     </>
+  );
+}
+
+/** A quiet line while the explainer works in the background. */
+function ExplainerStatus({ jobs }: { jobs: Job[] }) {
+  const open = jobs.filter((j) => j.kind === "explain" && (j.status === "queued" || j.status === "running"));
+  if (open.length === 0) return null;
+  const parts = open.reduce((n, j) => n + ((j.payload.subjects as string[] | undefined)?.length ?? 0), 0);
+  return (
+    <p className="muted explaining">
+      Claude is writing explanations and questions for {parts} new or changed item{parts === 1 ? "" : "s"}.
+    </p>
   );
 }

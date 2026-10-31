@@ -110,3 +110,8 @@ export function shuffledOptions(d: Pick<Decision, "id" | "options">): Decision["
   }
   return out;
 }
+
+/** The explainer's takeaway at this level of detail, if it has written one. */
+export function takeaway(node: ModelNode | undefined, level: Level): string | undefined {
+  return node?.takeaways?.[level] ?? node?.takeaway;
+}
