@@ -3,7 +3,7 @@ import { type MouseEvent, useMemo, useState } from "react";
 import { api } from "./api.js";
 import { CHANGEABLE, FAILABLE, askHref, askSubject } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
-import { Diagram } from "./Diagram.js";
+import { Diagram, Legend } from "./Diagram.js";
 import { FlagBox, useFlags } from "./Flags.js";
 import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, PHASES, boxNotes, partShowing, partSummary, phaseOf, phaseStart, seenWith, subtitle, takeaway, trail, viewTitle, zoomTarget } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
@@ -200,6 +200,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             notes={notes}
             debt={overlay ? debtBands : undefined}
           />
+          <Legend part={part} nodes={nodes} modes={modes} />
           {overlay && part.elements.some((id) => debtBands.has(id)) && <p className="muted">Darker means a wider reach and less shown so far. Answering questions and guessing decisions lightens it.</p>}
           {parts.data.length > 1 && (
             <div className="parts" aria-label="Parts of this view">
