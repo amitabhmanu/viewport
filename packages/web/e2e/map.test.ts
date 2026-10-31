@@ -98,6 +98,15 @@ describe("viewer", () => {
     await expect.poll(() => level.textContent()).toBe(fitted);
   });
 
+  it("jumps to any part with Ctrl+K", async () => {
+    await page.keyboard.press("Control+k");
+    await page.getByRole("combobox", { name: "Find" }).fill("paym");
+    await page.keyboard.press("Enter");
+    await expect.poll(() => page.url()).toContain("focus=app.payments");
+    expect(await node("app.payments").getAttribute("class")).toContain("selected");
+    await node("app.orders").click();
+  });
+
   it("shows a model change within a second", async () => {
     await page.getByRole("radio", { name: "Complex" }).click();
     await expect.poll(() => page.url()).toContain("level=complex");

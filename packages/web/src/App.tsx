@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, subscribe } from "./api.js";
 import { AskPage } from "./AskPage.js";
+import { Jump } from "./JumpBox.js";
 import { LedgerPage } from "./LedgerPage.js";
 import { LiveContext, useLoad } from "./live.js";
 import { MapPage } from "./MapPage.js";
@@ -61,6 +62,7 @@ export function App() {
             </a>
           ))}
         </nav>
+        <Jump go={go} />
         <span className={`live ${connected ? "on" : "off"}`} title={connected ? "Updates as the model changes" : "Reconnecting to the daemon"}>
           {connected ? "Live" : "Offline"}
         </span>

@@ -57,7 +57,19 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: v
 .top nav { display: flex; gap: 4px; }
 .top nav a { text-decoration: none; color: var(--muted); padding: 4px 10px; border-radius: 6px; }
 .top nav a[aria-current="page"] { color: var(--ink); background: var(--accent-soft); }
-.live { margin-left: auto; font-size: 12px; color: var(--muted); }
+.jump-open { margin-left: auto; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.jump-open kbd, .jump kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; background: var(--bg); }
+.jump-backdrop { position: fixed; inset: 0; z-index: 10; background: rgb(0 0 0 / .3); display: flex; justify-content: center; align-items: flex-start; padding: 12vh 16px 0; }
+.jump { width: min(560px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 12px 40px rgb(0 0 0 / .25); overflow: hidden; }
+.jump input { width: 100%; font: inherit; font-size: 16px; color: var(--ink); background: none; border: 0; border-bottom: 1px solid var(--line); padding: 14px 16px; outline: none; }
+.jump ul { list-style: none; margin: 0; padding: 6px; max-height: 50vh; overflow: auto; }
+.jump li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; align-items: center; padding: 6px 10px; border-radius: 8px; cursor: pointer; }
+.jump li.here { background: var(--accent-soft); }
+.jump-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jump .kind-chip { font-size: 11px; }
+.jump-detail { grid-column: 1 / -1; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jump-none { display: block !important; cursor: default !important; }
+.live { margin-left: 0; font-size: 12px; color: var(--muted); }
 .live::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--unverified); }
 .live.on::before { background: #22a06b; }
 
@@ -124,7 +136,8 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 @media (max-width: 720px) {
   .map-body { flex-direction: column; }
   .panel { width: auto; border-left: 0; border-top: 1px solid var(--line); }
-  .top { gap: 12px; }
+  .top { gap: 12px; flex-wrap: wrap; }
+  .jump-open kbd { display: none; }
 }
 
 .diagram { display: block; max-width: none; }
