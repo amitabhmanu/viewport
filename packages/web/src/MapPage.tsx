@@ -1,11 +1,12 @@
-import type { Change, Level, Model, ModelEdge, ModelNode, ViewEdge, ViewEdgeKind } from "@viewport/core";
+import type { Change, Flag, Level, Model, ModelEdge, ModelNode, ViewEdge, ViewEdgeKind } from "@viewport/core";
 import { type MouseEvent, useMemo, useState } from "react";
 import { api } from "./api.js";
 import { CHANGEABLE, FAILABLE, askHref, askSubject } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Diagram, Legend } from "./Diagram.js";
 import { FlagBox, useFlags } from "./Flags.js";
-import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, PHASES, boxNotes, partShowing, partSummary, phaseOf, phaseStart, seenWith, subtitle, takeaway, trail, viewTitle, zoomTarget } from "./labels.js";
+import { KIND_FAMILY } from "./boxes.js";
+import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, PHASES, boxNotes, stepOrder, partShowing, partSummary, phaseOf, phaseStart, seenWith, subtitle, takeaway, trail, viewTitle, zoomTarget } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { mapHref } from "./router.js";
 
@@ -220,7 +221,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
           )}
         </div>
         {viewEdge && model.data && <EdgePanel edge={viewEdge} model={model.data} nodes={nodes} modes={modes} onPick={(id) => go(href({ focus: id }))} />}
-        {viewEdge === undefined && focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} onGo={go} />}
+        {viewEdge === undefined && focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} model={model.data} note={notes.get(focus)} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} onGo={go} />}
       </div>
     </section>
   );
@@ -273,6 +274,8 @@ function PhaseBar({ view, model, go }: { view: string; model: Model; go: (view: 
 function NodePanel({
   node,
   nodes,
+  model,
+  note,
   change,
   level,
   onZoom,
@@ -281,6 +284,9 @@ function NodePanel({
 }: {
   node: ModelNode;
   nodes: Map<string, ModelNode>;
+  model: Model;
+  /** The note drawn on the box ("No tests", "Personal data"), said in full here. */
+  note: string | undefined;
   change: Change | undefined;
   level: Level;
   onZoom: (id: string) => void;
@@ -297,7 +303,9 @@ function NodePanel({
   const d = detail.data;
   return (
     <aside className="panel" aria-label={node.name}>
-      <p className="kind">{KIND_LABEL[node.kind]}</p>
+      <p className="kind">
+        <span className={`kind-chip family-${KIND_FAMILY[node.kind]}`}>{KIND_LABEL[node.kind]}</span>
+      </p>
       <h2>
         {node.name} {change && <span className="tag fresh">{CHANGE_LABEL[change.change]}</span>}
       </h2>
@@ -331,6 +339,34 @@ function NodePanel({
       </div>
       {node.kind === "entity" && <p className={node.sensitivity === "pii" || node.sensitivity === "secret" ? "warn" : "muted"}>{SENSITIVITY[node.sensitivity]}</p>}
       {node.kind === "assumption" && <p className={node.status === "open" ? "warn" : "muted"}>{ASSUMPTION[node.status]}</p>}
+      {node.kind === "assumption" && node.status === "open" && <AssumptionAnswer id={node.id} flags={flags.get(node.id) ?? []} />}
+      {note === "No tests" && <p className="warn">No tests cover this yet.</p>}
+      {node.kind === "entity" && node.code.length > 0 && (
+        <>
+          <h3>In the code</h3>
+          <ul className="paths">
+            {node.code.map((c) => (
+              <li key={c}>
+                <code>{c}</code>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {node.kind === "process" && d && d.children.length > 0 && (
+        <>
+          <h3>Steps, in order</h3>
+          <ol className="links steps">
+            {stepOrder(d.children, model.edges).map((id) => (
+              <li key={id}>
+                <button className="link" onClick={() => onPick(id)}>
+                  {nodes.get(id)?.name ?? id}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
       {node.kind === "test" && node.sync === "stale" && <p className="warn">No test files match these paths.</p>}
       {(node.kind === "component" || node.kind === "test") && (
         <>
@@ -362,7 +398,7 @@ const SENSITIVITY: Record<"public" | "internal" | "pii" | "secret", string> = {
 };
 
 const ASSUMPTION: Record<"open" | "confirmed" | "rejected", string> = {
-  open: "Not confirmed yet. Only you can say whether this is true: flag it below.",
+  open: "Not confirmed yet. Only you can say whether this is true.",
   confirmed: "Confirmed.",
   rejected: "Rejected: the code may still rely on it.",
 };
@@ -458,9 +494,28 @@ function Links({ title, nodes, ids, onPick }: { title: string; nodes: Map<string
             <button className="link" onClick={() => onPick(id)}>
               {nodes.get(id)?.name ?? id}
             </button>
+            {nodes.get(id) && <span className="link-kind"> {KIND_LABEL[nodes.get(id)!.kind].toLowerCase()}</span>}
           </li>
         ))}
       </ul>
     </>
   );
 }
+
+/**
+ * Only the developer can say whether an assumption holds. Either answer goes to
+ * Claude as a flag, and Claude updates the model, as with any other flag.
+ */
+function AssumptionAnswer({ id, flags }: { id: string; flags: Flag[] }) {
+  const said = flags.find((f) => f.status !== "resolved" && (f.text === ASSUMPTION_TRUE || f.text === ASSUMPTION_FALSE));
+  if (said) return <p className="muted">You said: {said.text === ASSUMPTION_TRUE ? "it holds" : "it does not hold"}. Claude will update the model.</p>;
+  return (
+    <div className="actions">
+      <button onClick={() => void api.flag(id, ASSUMPTION_TRUE)}>It holds</button>
+      <button onClick={() => void api.flag(id, ASSUMPTION_FALSE)}>It does not hold</button>
+    </div>
+  );
+}
+
+const ASSUMPTION_TRUE = "This assumption holds: please mark it confirmed.";
+const ASSUMPTION_FALSE = "This assumption does not hold: please mark it rejected and check what relies on it.";
