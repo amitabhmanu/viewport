@@ -24,6 +24,8 @@ import {
   resolveFlag,
   slice,
   trace,
+  changeImpact,
+  failureImpact,
   unresolvedFlags,
   view,
   viewportPaths,
@@ -125,9 +127,9 @@ export function createServer(root: string): McpServer {
     "model_view",
     {
       description:
-        "A named view of the model, split into sub-views that fit the element budget for the level. Names: overview, containers, components:<container id>, code-map.",
+        "A named view of the model, split into sub-views that fit the element budget for the level (a process view splits into one part per path, main path first). Names: overview, containers, components:<container id>, code-map, processes, process:<process id>, rules, data, coverage, deploy.",
       inputSchema: {
-        name: z.string().describe("overview, containers, components:<container id> or code-map"),
+        name: z.string().describe("overview, containers, components:<container id>, code-map, processes, process:<process id>, rules, data, coverage or deploy"),
         level: z.enum(["simple", "medium", "complex"]).default("medium"),
       },
       annotations: read,
@@ -148,6 +150,25 @@ export function createServer(root: string): McpServer {
       annotations: read,
     },
     ({ from, to, direction }) => handle(async () => trace(await graph(), from, { direction, ...(to !== undefined ? { to } : {}) })),
+  );
+
+  server.registerTool(
+    "model_whatif",
+    {
+      description:
+        "What-if questions over the model. `fails`: what breaks if a container, component, external or runtime fails (sync callers go down, async and data dependents degrade, then the steps, processes and people affected). `changes`: what code to touch and which tests to rerun if a process, step, rule, assumption or entity changes. Returns nodes, edge keys and each node's effect.",
+      inputSchema: {
+        fails: z.string().optional().describe("Id of the part that fails"),
+        changes: z.string().optional().describe("Id of the requirement that changes"),
+      },
+      annotations: read,
+    },
+    ({ fails, changes }) =>
+      handle(async () => {
+        if ((fails === undefined) === (changes === undefined)) throw new QueryError("give exactly one of fails or changes");
+        const g = await graph();
+        return fails !== undefined ? failureImpact(g, fails) : changeImpact(g, changes!);
+      }),
   );
 
   server.registerTool(

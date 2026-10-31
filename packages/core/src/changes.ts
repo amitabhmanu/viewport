@@ -1,6 +1,8 @@
+import { readdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import { stableStringify } from "./fsutil.js";
-import { readSnapshot, snapshotModel } from "./model-store.js";
+import { readSnapshot, snapshotModel, snapshotPath } from "./model-store.js";
 import { type Decision, type Model, type ModelEdge, type ModelNode, edgeKey } from "./schema.js";
 
 export interface Change {
@@ -52,7 +54,8 @@ export function diffModels(before: Model, after: Model): Change[] {
     if (n.kind !== "decision" && !newNodes.has(id)) changes.push({ subject: id, what: "node", change: "removed", label: n.name, nodes: [] });
   }
 
-  const flow = (e: ModelEdge) => e.kind === "depends_on" || e.kind === "uses";
+  // Containment shows as the node's place and decisions as the ledger; every other edge is a change worth seeing.
+  const flow = (e: ModelEdge) => e.kind !== "contains" && e.kind !== "decided_by";
   const oldEdges = new Map(before.edges.filter(flow).map((e) => [edgeKey(e), e]));
   const newEdges = new Map(after.edges.filter(flow).map((e) => [edgeKey(e), e]));
   const live = (ids: string[]) => ids.filter((id) => newNodes.has(id));
@@ -124,6 +127,45 @@ export async function changesSince(modelPath: string, db: DatabaseSync, model: M
     return { since: model.revision, revision: model.revision, changes: [] };
   }
   return { since: start.revision, revision: model.revision, changes: unseen };
+}
+
+export interface Comparison {
+  from: number;
+  to: number;
+  changes: Change[];
+  /** Nodes of the later revision that a reader should look at, and its changed edges. */
+  nodes: string[];
+  edges: string[];
+}
+
+/** Revisions held in local snapshots, oldest first (D-014). */
+export async function keptRevisions(modelPath: string): Promise<number[]> {
+  try {
+    const files = await readdir(dirname(snapshotPath(modelPath, 0)));
+    return files.flatMap((f) => (/^\d+\.json$/.test(f) ? [Number(f.slice(0, -5))] : [])).sort((a, b) => a - b);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * What differs between two revisions of the model, from the local snapshots (D-014).
+ * Undefined when either revision is no longer kept.
+ */
+export async function compareRevisions(modelPath: string, current: Model, from: number, to = current.revision): Promise<Comparison | undefined> {
+  const at = async (r: number) => (r === current.revision ? current : await readSnapshot(modelPath, r));
+  const [before, after] = await Promise.all([at(from), at(to)]);
+  if (before === undefined || after === undefined) return undefined;
+  const changes = diffModels(before, after);
+  const present = new Set(after.nodes.map((n) => n.id));
+  const edgeKeys = new Set(after.edges.map(edgeKey));
+  return {
+    from,
+    to,
+    changes,
+    nodes: [...new Set(changes.flatMap((c) => c.nodes))].filter((id) => present.has(id)).sort(),
+    edges: changes.filter((c) => c.what === "edge" && edgeKeys.has(c.subject)).map((c) => c.subject),
+  };
 }
 
 /** Marks items as opened at `revision`; they drop out of the changes until they change again. */

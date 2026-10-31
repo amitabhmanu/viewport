@@ -1,4 +1,4 @@
-import type { ModelNode, SplitView } from "@viewport/core";
+import type { ModelNode, SplitView, ViewEdgeKind } from "@viewport/core";
 import ELK, { type ElkNode } from "elkjs/lib/elk.bundled.js";
 
 export interface Box {
@@ -14,7 +14,8 @@ export interface Route {
   id: string;
   from: string;
   to: string;
-  kind: "uses" | "depends_on";
+  kind: ViewEdgeKind;
+  label?: string;
   points: { x: number; y: number }[];
 }
 
@@ -60,7 +61,7 @@ export async function layout(part: SplitView): Promise<Layout> {
   const graph = elkGraph(part);
   const stub = new Set(part.stubs);
   const out = await elk.layout(graph);
-  const kinds = new Map(part.edges.map((e) => [`${e.kind}:${e.from}->${e.to}`, e.kind]));
+  const byKey = new Map(part.edges.map((e) => [`${e.kind}:${e.from}->${e.to}`, e]));
   return {
     width: out.width ?? 0,
     height: out.height ?? 0,
@@ -68,13 +69,14 @@ export async function layout(part: SplitView): Promise<Layout> {
     routes: (out.edges ?? []).map((e) => {
       const section = e.sections?.[0];
       const points = section ? [section.startPoint, ...(section.bendPoints ?? []), section.endPoint] : [];
-      return { id: e.id, from: e.sources[0]!, to: e.targets[0]!, kind: kinds.get(e.id) ?? "depends_on", points };
+      const edge = byKey.get(e.id);
+      return { id: e.id, from: e.sources[0]!, to: e.targets[0]!, kind: edge?.kind ?? "depends_on", ...(edge?.label ? { label: edge.label } : {}), points };
     }),
   };
 }
 
-/** Which marker a node carries: stale beats unverified; ok and non-component nodes carry none. */
+/** Which marker a node carries: stale beats unverified; ok nodes, and kinds verification does not check, carry none. */
 export function syncMarker(node: ModelNode | undefined): "stale" | "unverified" | undefined {
-  if (node === undefined || node.kind !== "component") return undefined;
+  if (node === undefined || (node.kind !== "component" && node.kind !== "test")) return undefined;
   return node.sync === "ok" ? undefined : node.sync;
 }

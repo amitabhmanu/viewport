@@ -1,8 +1,16 @@
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 
-/** A question asked of the model from the viewer: a trace or a slice, as URL-style parameters. */
+/**
+ * A question asked of the model from the viewer, as URL-style parameters: a trace, a
+ * slice, a what-if (a part fails, or a requirement changes), a comparison of two
+ * revisions, or a decision's options side by side.
+ */
 export const AskQuery = z.discriminatedUnion("q", [
+  z.object({ q: z.literal("fails"), node: z.string().min(1) }),
+  z.object({ q: z.literal("changes"), node: z.string().min(1) }),
+  z.object({ q: z.literal("compare"), from: z.coerce.number().int().nonnegative(), to: z.coerce.number().int().nonnegative().optional() }),
+  z.object({ q: z.literal("options"), decision: z.string().min(1) }),
   z.object({
     q: z.literal("trace"),
     from: z.string().min(1),

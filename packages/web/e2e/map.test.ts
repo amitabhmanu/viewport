@@ -159,7 +159,7 @@ describe("viewer", () => {
     await page.getByRole("button", { name: "Pin" }).click();
     await page.locator(".pins li", { hasText: "What depends on storage" }).waitFor();
 
-    await page.getByRole("radio", { name: "Slice" }).click();
+    await page.locator(".ask-form").getByLabel("Question").selectOption({ label: "Slice" });
     await page.getByLabel("Show").selectOption({ label: "Async dependencies" });
     await page.getByRole("button", { name: "Ask", exact: true }).click();
     await page.locator(".ask h2", { hasText: "Async dependencies" }).waitFor();
@@ -194,7 +194,7 @@ describe("viewer", () => {
   it("flags an arrow and a decision, and shows Claude's answers where they were asked", async () => {
     await page.goto(`http://127.0.0.1:${daemon.port}/map?view=components:app&level=complex`);
     // Arrows bend, so the centre of their box is often off the line; select by keyboard.
-    await page.getByRole("button", { name: "Dependency orders to payments" }).focus();
+    await page.getByRole("button", { name: "Dependency: orders to payments" }).focus();
     await page.keyboard.press("Enter");
     await page.locator(".panel h2", { hasText: "orders → payments" }).waitFor();
     await page.getByLabel("Question for Claude").fill("Why call payments synchronously?");

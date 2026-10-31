@@ -1,6 +1,6 @@
 import type { Change, Level, ModelNode, SplitView } from "@viewport/core";
 import { useEffect, useState } from "react";
-import { CHANGE_LABEL, KIND_LABEL, subtitle } from "./labels.js";
+import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, arrowText, subtitle } from "./labels.js";
 import { type Layout, layout, syncMarker } from "./layout.js";
 
 interface Props {
@@ -18,10 +18,12 @@ interface Props {
   /** Selecting an arrow, by its view edge key. */
   onSelectEdge?: (key: string) => void;
   selectedEdge?: string | undefined;
+  /** Short notes on boxes, by node id: "Personal data", "To confirm", "No tests". */
+  notes?: Map<string, string>;
 }
 
 /** One sub-view as an SVG diagram: boxes for elements, dashed boxes for stubs, arrows for dependencies. */
-export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge }: Props) {
+export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge, notes }: Props) {
   const [laid, setLaid] = useState<Layout>();
   useEffect(() => {
     let live = true;
@@ -35,8 +37,12 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
   return (
     <svg className="diagram" viewBox={`0 0 ${laid.width} ${laid.height}`} width={laid.width} height={laid.height} role="img" aria-label={part.title}>
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        {/* Sized in the diagram's own units, so a thicker line keeps the same head. */}
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="10.5" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" className="arrowhead" />
+        </marker>
+        <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="10.5" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" className="arrowhead accent" />
         </marker>
       </defs>
       {laid.routes.map((r) => {
@@ -51,7 +57,7 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
               data-edge={r.id}
               className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${lit ? " lit" : ""}`}
               points={points}
-              markerEnd="url(#arrow)"
+              markerEnd={lit || fresh ? "url(#arrow-accent)" : "url(#arrow)"}
             />
             {onSelectEdge && (
               <polyline
@@ -59,7 +65,7 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
                 points={points}
                 role="button"
                 tabIndex={0}
-                aria-label={`Dependency ${nodes.get(r.from)?.name ?? r.from} to ${nodes.get(r.to)?.name ?? r.to}`}
+                aria-label={`${EDGE_LABEL[r.kind].noun}: ${nodes.get(r.from)?.name ?? r.from} to ${nodes.get(r.to)?.name ?? r.to}`}
                 onClick={() => onSelectEdge(r.id)}
                 onKeyDown={(e) => e.key === "Enter" && onSelectEdge(r.id)}
               />
@@ -73,6 +79,7 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         const marker = b.stub ? undefined : syncMarker(node);
         const target = part.continuesIn[b.id];
         const change = b.stub ? undefined : changed.get(b.id);
+        const note = b.stub ? undefined : notes?.get(b.id);
         const cls = ["node", node?.kind ?? "unknown", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? "", change ? "fresh" : ""].filter(Boolean).join(" ");
         return (
           <g
@@ -112,16 +119,53 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
                 {CHANGE_LABEL[change.change]}
               </text>
             )}
+            {note && (
+              <text x={12} y={b.height - 10} className={`note ${note === "No tests" || note === "Rejected" ? "gap" : ""}`}>
+                {note}
+              </text>
+            )}
             {marker && (
               <g className="marker" transform={`translate(${b.width - 14},14)`}>
                 <circle r={6} />
-                <title>{marker === "stale" ? "Changed in the code since it was modeled" : "Not yet checked against the code"}</title>
+                <title>{markerTitle(node?.kind, marker)}</title>
               </g>
             )}
           </g>
         );
       })}
+      {/* Last, so no line or box covers the text. */}
+      {laid.routes.map((r) => {
+        const text = arrowText(r.kind, r.label);
+        return text && r.points.length > 1 ? <EdgeLabel key={r.id} text={text} points={r.points} /> : null;
+      })}
     </svg>
+  );
+}
+
+function markerTitle(kind: ModelNode["kind"] | undefined, marker: "stale" | "unverified"): string {
+  if (kind === "test") return marker === "stale" ? "No test files match these paths" : "Not yet checked against the code";
+  return marker === "stale" ? "Changed in the code since it was modeled" : "Not yet checked against the code";
+}
+
+/** Text on an arrow, beside its longest segment if that runs down, below it if across. */
+function EdgeLabel({ text, points }: { text: string; points: { x: number; y: number }[] }) {
+  let best = 0;
+  let at = { x: points[0]!.x, y: points[0]!.y };
+  let across = false;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1]!;
+    const b = points[i]!;
+    const length = Math.hypot(b.x - a.x, b.y - a.y);
+    if (length > best) {
+      best = length;
+      at = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      across = a.y === b.y;
+    }
+  }
+  return (
+    <text className="edge-label" x={across ? at.x : at.x + 6} y={across ? at.y + 9 : at.y} textAnchor={across ? "middle" : "start"} dominantBaseline="middle">
+      {clip(text, 28)}
+    </text>
   );
 }
 

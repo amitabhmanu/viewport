@@ -1,10 +1,10 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { changesSince, diffModels, markAllSeen, markSeen } from "./changes.js";
+import { changesSince, compareRevisions, diffModels, keptRevisions, markAllSeen, markSeen } from "./changes.js";
 import { SNAPSHOTS_KEPT, readSnapshot, writeModel } from "./model-store.js";
 import type { Decision, Model } from "./schema.js";
 import { openState } from "./state.js";
-import { shopModel, tempDir } from "./test-helpers.js";
+import { shopModel, shopModelV2, tempDir } from "./test-helpers.js";
 
 const renamed = (m: Model): Model => ({ ...m, nodes: m.nodes.map((n) => (n.id === "app.orders" ? { ...n, role: "Order lifecycle and refunds" } : n)) });
 const withSearch = (m: Model): Model => ({
@@ -97,5 +97,25 @@ describe("changesSince", () => {
     await writeModel(path, model);
     expect(await readSnapshot(path, 1)).toBeUndefined();
     expect(await readSnapshot(path, SNAPSHOTS_KEPT + 1)).toBeDefined();
+  });
+});
+
+describe("comparing revisions", () => {
+  it("diffs any two kept revisions and lists the kept ones", async () => {
+    const path = join(await tempDir(), ".viewport", "model.json");
+    const first = await writeModel(path, shopModel());
+    const second = await writeModel(path, withSearch(first));
+    expect(await keptRevisions(path)).toEqual([1, 2]);
+    const c = await compareRevisions(path, second, first.revision);
+    expect(c).toMatchObject({ from: 1, to: 2, nodes: ["app.api", "app.search"], edges: ["depends_on:app.api->app.search"] });
+    expect(c?.changes.map((x) => `${x.change} ${x.subject}`)).toEqual(["added app.search", "added depends_on:app.api->app.search"]);
+    expect((await compareRevisions(path, second, 2, 1))?.changes.map((x) => x.change)).toEqual(["removed", "removed"]);
+    expect(await compareRevisions(path, second, 99)).toBeUndefined();
+  });
+
+  it("shows changes to the v2 edges too", () => {
+    const before = shopModelV2();
+    const after = { ...before, edges: before.edges.filter((e) => e.kind !== "covers") };
+    expect(diffModels(before, after).map((c) => `${c.change} ${c.subject}`)).toEqual(["removed covers:checkout-tests->ordering.place"]);
   });
 });

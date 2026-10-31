@@ -17,8 +17,12 @@ import {
   addPin,
   answerQuiz,
   changesSince,
+  changeImpact,
+  compareRevisions,
   addEvidence,
   calibration,
+  failureImpact,
+  keptRevisions,
   dueQuiz,
   familiarityScores,
   get,
@@ -138,6 +142,32 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
             addEvidence(db, result.nodes, "lookup");
           });
         }
+        return result;
+      }
+      case "GET /api/impact": {
+        const query = AskQuery.parse({ q: q.get("q"), node: q.get("node") });
+        if (query.q !== "fails" && query.q !== "changes") throw new HttpError(400, "q must be fails or changes");
+        const g = await graph();
+        const result = query.q === "fails" ? failureImpact(g, query.node) : changeImpact(g, query.node);
+        if (q.get("quiet") !== "1") {
+          withState((db) => {
+            logEvent(db, "query", query.node, { ...query, nodes: result.nodes.length });
+            addEvidence(db, result.nodes, "lookup");
+          });
+        }
+        return result;
+      }
+      case "GET /api/revisions": {
+        const model = await readModel(paths.model);
+        return { current: model.revision, kept: await keptRevisions(paths.model) };
+      }
+      case "GET /api/compare": {
+        const query = AskQuery.parse({ q: "compare", from: need("from"), ...(q.get("to") ? { to: q.get("to") } : {}) });
+        if (query.q !== "compare") throw new HttpError(400, "bad comparison");
+        const model = await readModel(paths.model);
+        const result = await compareRevisions(paths.model, model, query.from, query.to ?? model.revision);
+        if (!result) throw new HttpError(404, `revision ${query.from}${query.to !== undefined ? ` or ${query.to}` : ""} is no longer kept on this machine`);
+        if (q.get("quiet") !== "1") withState((db) => logEvent(db, "query", null, { ...query, changes: result.changes.length }));
         return result;
       }
       case "GET /api/predictions":

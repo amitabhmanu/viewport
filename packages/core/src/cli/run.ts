@@ -5,7 +5,7 @@ import { ConfigMissingError, readConfig } from "../config-store.js";
 import { readLedger } from "../ledger.js";
 import { readModel, serializeModel, writeModel } from "../model-store.js";
 import { viewportPaths } from "../paths.js";
-import { ModelGraph, QueryError, get, slice, trace, view, type Level, type ViewName } from "../query/index.js";
+import { ModelGraph, QueryError, changeImpact, failureImpact, get, slice, trace, view, type Level, type ViewName } from "../query/index.js";
 import { applyReport, isClean, verify } from "../verify/index.js";
 import { openState } from "../state.js";
 import { engagementStats, formatStats } from "../stats.js";
@@ -33,6 +33,11 @@ Commands:
   query trace <from> [--to X] [--upstream]
   query slice [--externals] [--mode M] [--sync S] [--decided-by D]
   query view <name> [--level simple|medium|complex]
+                               Views: overview, containers, components:<id>, code-map,
+                               processes, process:<id>, rules, data, coverage, deploy
+  query fails <id>             What breaks if a container, component, external or runtime fails
+  query changes <id>           What code and tests a change to a process, step, rule,
+                               assumption or entity touches
   stats [--days N]             Engagement numbers for the dogfood log (default: last 7 days)
 
 Options:
@@ -181,6 +186,10 @@ function runQuery(graph: ModelGraph, sub: string | undefined, arg: string | unde
       if (!["simple", "medium", "complex"].includes(level)) throw new QueryError(`unknown level '${level}'`);
       return view(graph, need("a view name") as ViewName, level);
     }
+    case "fails":
+      return failureImpact(graph, need("the part that fails"));
+    case "changes":
+      return changeImpact(graph, need("the requirement that changes"));
   }
-  throw new QueryError(`unknown query '${sub ?? ""}'; use get, trace, slice or view`);
+  throw new QueryError(`unknown query '${sub ?? ""}'; use get, trace, slice, view, fails or changes`);
 }
