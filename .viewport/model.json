@@ -218,6 +218,13 @@
       "to": "d-008"
     },
     {
+      "from": "core.query",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-011"
+    },
+    {
       "from": "core.verify",
       "kind": "decided_by",
       "source": "agent",
@@ -293,6 +300,13 @@
       "source": "agent",
       "sync": "unverified",
       "to": "d-005"
+    },
+    {
+      "from": "web.pages",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-012"
     },
     {
       "from": "core.api",
@@ -751,8 +765,8 @@
       "sync": "stale"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:b88de77cfdcf082cf9883f6dcbda205f",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:e65be644991640374256698d01aa7896",
       "id": "core.cli",
       "kind": "component",
       "name": "Command line",
@@ -761,11 +775,11 @@
       ],
       "role": "The viewport command line",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:82a38ea877506efa89e75d40d7fbaae5",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:72c0d2fef8049e44cba266042aac534a",
       "id": "core.edit",
       "kind": "component",
       "name": "Model edits",
@@ -776,11 +790,11 @@
       ],
       "role": "Applies model edits and tracks what changed",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:02899192ca469d7c68d8fb278ab97515",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:53e7e92302b76b61334481b87153b327",
       "id": "core.learn",
       "kind": "component",
       "name": "Learning loop",
@@ -798,11 +812,11 @@
       ],
       "role": "Quizzes, grades and explains the model to the developer",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:68cb0b20402293a53464f773f5a63d6b",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:043ddb82a5c5962943d342ae17d0836c",
       "id": "core.model",
       "kind": "component",
       "name": "Model store",
@@ -820,11 +834,11 @@
       ],
       "role": "Defines the model schema and stores the model, ledger and local state",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:a5e87cb5f13e73c6d60481de45837fe1",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:c2e5dda439bd1338e2a5ee3211d58ce1",
       "id": "core.query",
       "kind": "component",
       "name": "Queries and views",
@@ -833,11 +847,11 @@
       ],
       "role": "Answers graph questions and builds the views",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "128a6d21ed71b2a3ec8b3d60316a9afa8de2b937",
-      "fingerprint": "sha256:27d6e55c2515e1abcf512cc86065051e",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:5ee8b33920a1f1953690a2919ef85c5b",
       "id": "core.verify",
       "kind": "component",
       "name": "Verification",
@@ -846,7 +860,7 @@
       ],
       "role": "Checks the model against the code",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -911,8 +925,8 @@
       "sync": "stale"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:42d5b591c06d8f48839a9be1b76ee79a",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:fadcba66c7b2d4d63540bfc39e8c6f7b",
       "id": "mcp.server",
       "kind": "component",
       "name": "MCP tools",
@@ -925,7 +939,7 @@
       ],
       "role": "Exposes the model to Claude Code as tools",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -1013,8 +1027,8 @@
       "sync": "stale"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:ce9c0f0f2280b57a584cee7e1586cb26",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:cc46d0d53e7e3d0e60944b926e4a5b1b",
       "id": "web.pages",
       "kind": "component",
       "name": "Pages",
@@ -1032,11 +1046,11 @@
       ],
       "role": "The map, today, ledger and ask screens",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:8a2b9db0ece61b094ef23aa2926b6256",
+      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
+      "fingerprint": "sha256:fc2d74e49c70c06a1e1b00f93dfc0a53",
       "id": "web.parts",
       "kind": "component",
       "name": "Shared views",
@@ -1051,7 +1065,7 @@
       ],
       "role": "Diagram, flags, quiz, predictions and labels shown on the pages",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
       "blastRadius": 6,
@@ -1142,8 +1156,26 @@
       "reversibility": "easy",
       "source": "agent",
       "sync": "unverified"
+    },
+    {
+      "blastRadius": 6,
+      "id": "d-011",
+      "kind": "decision",
+      "name": "How a process view is split into parts",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 1,
+      "id": "d-012",
+      "kind": "decision",
+      "name": "Where the phase views live in the viewer",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
     }
   ],
-  "revision": 17,
+  "revision": 22,
   "version": 2
 }

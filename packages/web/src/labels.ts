@@ -1,4 +1,4 @@
-import type { Change, Decision, Level, Model, ModelNode, Prediction, SplitView } from "@viewport/core";
+import type { Change, Decision, Level, Model, ModelNode, Prediction, SplitView, ViewEdgeKind } from "@viewport/core";
 
 /** The line under a node's name. Simple says what it does; medium adds the technology; complex leads with it. */
 export function subtitle(node: ModelNode, level: Level): string {
@@ -32,27 +32,116 @@ export const KIND_LABEL: Record<ModelNode["kind"], string> = {
   runtime: "Runtime",
 };
 
+const VIEW_TITLE: Record<string, string> = {
+  overview: "Overview",
+  containers: "Containers",
+  "code-map": "Code map",
+  processes: "Processes",
+  rules: "Rules and assumptions",
+  data: "Data",
+  coverage: "Test coverage",
+  deploy: "Deployment",
+};
+
 /** How a view name reads in the breadcrumb. */
 export function viewTitle(name: string, nodes: Map<string, ModelNode>): string {
-  if (name === "overview") return "Overview";
-  if (name === "containers") return "Containers";
-  if (name === "code-map") return "Code map";
-  if (name.startsWith("components:")) return nodes.get(name.slice("components:".length))?.name ?? name;
-  return name;
+  if (VIEW_TITLE[name]) return VIEW_TITLE[name];
+  const inside = name.startsWith("components:") ? name.slice("components:".length) : name.startsWith("process:") ? name.slice("process:".length) : undefined;
+  return inside !== undefined ? (nodes.get(inside)?.name ?? inside) : name;
 }
 
-/** The breadcrumb trail to a view: overview, then containers, then the container. */
+/** The breadcrumb trail to a view: from its phase's entry view down to it. */
 export function trail(name: string): string[] {
   if (name === "overview") return ["overview"];
-  if (name === "containers" || name === "code-map") return ["overview", name];
-  return ["overview", "containers", name];
+  if (name === "containers") return ["overview", name];
+  if (name.startsWith("components:")) return ["overview", "containers", name];
+  if (name.startsWith("process:")) return ["processes", name];
+  return [name];
 }
 
 /** Where clicking a node leads: the next level down, if there is one. */
 export function zoomTarget(node: ModelNode): string | undefined {
   if (node.kind === "system") return "containers";
   if (node.kind === "container") return `components:${node.id}`;
+  if (node.kind === "process") return `process:${node.id}`;
   return undefined;
+}
+
+export interface Phase {
+  label: string;
+  /** Where the phase starts on the Map. */
+  view: string;
+  /** Other views in the phase, as links beside the phase bar. */
+  more: { view: string; label: string }[];
+  /** The phase has something to show once the model has a node of one of these kinds. */
+  needs: ModelNode["kind"][];
+  /** True for the views that belong to this phase. */
+  holds: (view: string) => boolean;
+}
+
+/** The phases of building a system, each a set of default views over the one model (D-012). */
+export const PHASES: Phase[] = [
+  {
+    label: "Requirements",
+    view: "processes",
+    more: [{ view: "rules", label: "Rules and assumptions" }],
+    needs: ["process", "rule", "assumption"],
+    holds: (v) => v === "processes" || v === "rules" || v.startsWith("process:"),
+  },
+  { label: "Architecture", view: "overview", more: [], needs: ["system"], holds: (v) => v === "overview" || v === "containers" || v.startsWith("components:") },
+  { label: "Data", view: "data", more: [], needs: ["entity"], holds: (v) => v === "data" },
+  { label: "Build", view: "code-map", more: [], needs: ["component"], holds: (v) => v === "code-map" },
+  { label: "Verification", view: "coverage", more: [], needs: ["test", "process"], holds: (v) => v === "coverage" },
+  { label: "Deploy", view: "deploy", more: [], needs: ["runtime"], holds: (v) => v === "deploy" },
+];
+
+/** The phase a view belongs to. */
+export function phaseOf(view: string): Phase | undefined {
+  return PHASES.find((p) => p.holds(view));
+}
+
+/** Where a phase starts: its entry view, or for Requirements with rules but no processes, the rules. */
+export function phaseStart(phase: Phase, model: Model): string {
+  if (phase.view === "processes" && !model.nodes.some((n) => n.kind === "process")) return "rules";
+  return phase.view;
+}
+
+/** Arrow names by edge kind, read from the arrow's start ("depends on") and from its end ("used by"). */
+export const EDGE_LABEL: Record<ViewEdgeKind, { out: string; in: string; noun: string }> = {
+  depends_on: { out: "Depends on", in: "Used by", noun: "Dependency" },
+  uses: { out: "Uses", in: "Used by", noun: "Uses" },
+  next: { out: "Next", in: "Comes after", noun: "Next step" },
+  implements: { out: "Carries out", in: "Done by", noun: "Carries out" },
+  constrained_by: { out: "Bound by", in: "Applies to", noun: "Business rule" },
+  assumes: { out: "Assumes", in: "Assumed by", noun: "Assumption" },
+  owns: { out: "Owns", in: "Owned by", noun: "Ownership" },
+  reads: { out: "Reads", in: "Read by", noun: "Reads" },
+  writes: { out: "Writes", in: "Written by", noun: "Writes" },
+  covers: { out: "Covers", in: "Tested by", noun: "Test coverage" },
+  runs_on: { out: "Runs on", in: "Runs", noun: "Runs on" },
+};
+
+/**
+ * Short notes drawn on boxes: personal or secret data, assumptions still to confirm,
+ * and steps and processes no test covers.
+ */
+export function boxNotes(model: Model): Map<string, string> {
+  const notes = new Map<string, string>();
+  const parent = new Map(model.edges.filter((e) => e.kind === "contains").map((e) => [e.to, e.from]));
+  const direct = new Set(model.edges.filter((e) => e.kind === "covers").map((e) => e.to));
+  const covered = new Set(direct);
+  for (const [child, p] of parent) {
+    // Covering a whole process covers each of its steps; a covered step counts for its process.
+    if (direct.has(p)) covered.add(child);
+    if (direct.has(child)) covered.add(p);
+  }
+  const anyTests = model.nodes.some((n) => n.kind === "test");
+  for (const n of model.nodes) {
+    if (n.kind === "entity" && (n.sensitivity === "pii" || n.sensitivity === "secret")) notes.set(n.id, n.sensitivity === "pii" ? "Personal data" : "Secret");
+    if (n.kind === "assumption" && n.status !== "confirmed") notes.set(n.id, n.status === "open" ? "To confirm" : "Rejected");
+    if (anyTests && (n.kind === "step" || n.kind === "process") && !covered.has(n.id)) notes.set(n.id, "No tests");
+  }
+  return notes;
 }
 
 /** The sub-view that shows an element in full, so a level switch keeps it in sight. */
@@ -73,14 +162,25 @@ export function partSummary(part: SplitView, nodes: Map<string, ModelNode>): str
   return onward > 0 ? `${shown}; ${onward} connection${onward === 1 ? " continues" : "s continue"} in other parts.` : `${shown}.`;
 }
 
-/** The view that shows a node in full: its container's components, the containers, or the overview. */
+const HOME: Partial<Record<ModelNode["kind"], string>> = {
+  container: "containers",
+  process: "processes",
+  rule: "rules",
+  assumption: "rules",
+  entity: "data",
+  test: "coverage",
+  runtime: "deploy",
+};
+
+/** The view that shows a node in full: a component's or step's parent view, the view of its kind, or the overview. */
 export function homeView(model: Model, id: string): string {
   const node = model.nodes.find((n) => n.id === id);
-  if (node?.kind === "component") {
+  if (node?.kind === "component" || node?.kind === "step") {
     const parent = model.edges.find((e) => e.kind === "contains" && e.to === id)?.from;
+    if (node.kind === "step") return parent ? `process:${parent}` : "processes";
     return parent ? `components:${parent}` : "containers";
   }
-  return node?.kind === "container" ? "containers" : "overview";
+  return (node && HOME[node.kind]) ?? "overview";
 }
 
 /** What opening a node catches the reader up on: the node, and changed edges that touch it. */

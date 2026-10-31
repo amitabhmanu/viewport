@@ -41,10 +41,10 @@ describe("jobs", () => {
 });
 
 describe("explainer", () => {
-  it("leaves out kinds the viewer does not draw yet", () => {
+  it("explains processes, rules, entities and runtimes, but not steps, assumptions or tests", () => {
     const due = explainDue(openState(":memory:"), shopModelV2(), []);
-    expect(due).toContain("app.orders");
-    expect(due.filter((id) => ["ordering", "ordering.place", "refund-shipped", "full-refund", "order", "checkout-tests", "server"].includes(id))).toEqual([]);
+    expect(due).toEqual(expect.arrayContaining(["app.orders", "ordering", "refund-shipped", "order", "server"]));
+    expect(due.filter((id) => ["ordering.place", "full-refund", "checkout-tests"].includes(id))).toEqual([]);
   });
 
   it("explains what is new or changed once, and stores takeaways and questions from the batch only", async () => {

@@ -33,6 +33,8 @@ Commands:
   query trace <from> [--to X] [--upstream]
   query slice [--externals] [--mode M] [--sync S] [--decided-by D]
   query view <name> [--level simple|medium|complex]
+                               Views: overview, containers, components:<id>, code-map,
+                               processes, process:<id>, rules, data, coverage, deploy
   stats [--days N]             Engagement numbers for the dogfood log (default: last 7 days)
 
 Options:

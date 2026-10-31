@@ -45,7 +45,7 @@ const decisionHash = (d: Decision) => hash(stableStringify(d));
  * Node kinds the explainer writes takeaways and questions for: the ones the viewer
  * draws. Decision nodes are covered by their ledger entries.
  */
-export const EXPLAINED_KINDS: ReadonlySet<ModelNode["kind"]> = new Set(["system", "actor", "external", "container", "component"]);
+export const EXPLAINED_KINDS: ReadonlySet<ModelNode["kind"]> = new Set(["system", "actor", "external", "container", "component", "process", "rule", "entity", "runtime"]);
 
 /**
  * Nodes and decisions that are new or changed since they were last explained, and not

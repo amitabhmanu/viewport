@@ -1,11 +1,11 @@
-import type { Change, Level, Model, ModelNode, ViewEdge } from "@viewport/core";
+import type { Change, Level, Model, ModelEdge, ModelNode, ViewEdge, ViewEdgeKind } from "@viewport/core";
 import { type MouseEvent, useMemo } from "react";
 import { api } from "./api.js";
 import { askHref } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
 import { FlagBox, useFlags } from "./Flags.js";
-import { CHANGE_LABEL, KIND_LABEL, partShowing, partSummary, seenWith, subtitle, takeaway, trail, viewTitle, zoomTarget } from "./labels.js";
+import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, PHASES, boxNotes, partShowing, partSummary, phaseOf, phaseStart, seenWith, subtitle, takeaway, trail, viewTitle, zoomTarget } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { mapHref } from "./router.js";
 
@@ -29,6 +29,8 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
     [model.data],
   );
 
+  const notes = useMemo(() => (model.data ? boxNotes(model.data) : new Map<string, string>()), [model.data]);
+
   const { changes, bySubject } = useChanges();
   // A container whose components changed shows as changed too, so the reader knows where to look.
   const changed = useMemo(() => {
@@ -41,9 +43,18 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
     return out;
   }, [bySubject, changes, model.data]);
 
-  const error = model.error ?? parts.error;
-  if (error) return <p className="error page">{error}</p>;
-  if (!model.data || !parts.data) return <p className="muted page">Loading…</p>;
+  if (model.error) return <p className="error page">{model.error}</p>;
+  if (!model.data) return <p className="muted page">Loading…</p>;
+  const phases = <PhaseBar view={view} model={model.data} go={(v) => go(mapHref(v, { level }))} />;
+  if (parts.error) {
+    return (
+      <section className="map">
+        {phases}
+        <p className="muted page">{emptyPhase(parts.error)}</p>
+      </section>
+    );
+  }
+  if (!parts.data) return <p className="muted page">Loading…</p>;
   if (parts.data.length === 0) return <p className="muted page">Nothing to show in this view yet.</p>;
 
   // A part in the URL wins; otherwise show the part holding the focused element, so a level switch keeps it in sight.
@@ -72,6 +83,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
 
   return (
     <section className="map">
+      {phases}
       <div className="map-bar">
         <nav className="crumbs" aria-label="Where you are">
           {trail(view).map((name, i, all) =>
@@ -105,8 +117,8 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
       <div className="map-body">
         <div className="canvas">
           <p className="narrative">
-            {parts.data.length > 1 && <strong>Part {index + 1} of {parts.data.length}. </strong>}
-            {takeaway(nodes.get(view.startsWith("components:") ? view.slice("components:".length) : ""), level) ?? partSummary(part, nodes)}
+            {parts.data.length > 1 && <strong>{partLabel(view, part.title)} {index + 1} of {parts.data.length}. </strong>}
+            {takeaway(nodes.get(viewSubject(view)), level) ?? partSummary(part, nodes)}
           </p>
           <Diagram
             part={part}
@@ -123,6 +135,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             onStub={(id) => void openStub(id)}
             onSelectEdge={(key) => go(href({ focus: undefined, edge: key === edgeParam ? undefined : key }))}
             selectedEdge={edgeParam}
+            notes={notes}
           />
           {parts.data.length > 1 && (
             <div className="parts" aria-label="Parts of this view">
@@ -144,6 +157,48 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
         {viewEdge === undefined && focus !== undefined && nodes.has(focus) && <NodePanel node={nodes.get(focus)!} nodes={nodes} change={bySubject.get(focus)} level={level} onZoom={zoom} onPick={(id) => void openStub(id)} onGo={go} />}
       </div>
     </section>
+  );
+}
+
+/** The node a view looks inside, whose takeaway heads the view. */
+function viewSubject(view: string): string {
+  if (view.startsWith("components:")) return view.slice("components:".length);
+  if (view.startsWith("process:")) return view.slice("process:".length);
+  return "";
+}
+
+/** "Part", or for a process split by scenario, the path the part follows ("When the order had shipped, part"). */
+function partLabel(view: string, title: string): string {
+  if (!view.startsWith("process:")) return "Part";
+  return `${title.slice(title.indexOf(": ") + 2)}, part`;
+}
+
+/** A phase view's "nothing here" error, said as what to model next. */
+function emptyPhase(error: string): string {
+  const missing = /has no (.+) yet/.exec(error)?.[1];
+  return missing ? `The model has no ${missing} yet. Ask Claude to add them, or run the viewport-modeler agent; the viewport-modeling skill says how.` : error;
+}
+
+/** The phases of the build, each opening its default view. A phase with nothing modeled is shown but disabled. */
+function PhaseBar({ view, model, go }: { view: string; model: Model; go: (view: string) => void }) {
+  const here = phaseOf(view);
+  const kinds = new Set(model.nodes.map((n) => n.kind));
+  return (
+    <nav className="phases" aria-label="Phases">
+      {PHASES.map((p) => {
+        const ready = p.needs.some((k) => kinds.has(k));
+        return (
+          <button key={p.label} aria-current={p === here ? "page" : undefined} disabled={!ready} title={ready ? undefined : "Not modeled yet"} onClick={() => go(phaseStart(p, model))}>
+            {p.label}
+          </button>
+        );
+      })}
+      {here?.more.map((m) => (
+        <button key={m.view} className="more" aria-current={m.view === view ? "page" : undefined} onClick={() => go(m.view)}>
+          {m.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -185,7 +240,7 @@ function NodePanel({
       )}
       <div className="actions">
         {zoomTarget(node) && <button onClick={() => onZoom(node.id)}>Look inside</button>}
-        {node.kind !== "system" && node.kind !== "actor" && (
+        {(node.kind === "container" || node.kind === "component" || node.kind === "external") && (
           <>
             <a className="button" href={askHref({ q: "trace", from: node.id, direction: "upstream" })} onClick={follow}>
               What depends on it
@@ -196,9 +251,12 @@ function NodePanel({
           </>
         )}
       </div>
-      {node.kind === "component" && (
+      {node.kind === "entity" && <p className={node.sensitivity === "pii" || node.sensitivity === "secret" ? "warn" : "muted"}>{SENSITIVITY[node.sensitivity]}</p>}
+      {node.kind === "assumption" && <p className={node.status === "open" ? "warn" : "muted"}>{ASSUMPTION[node.status]}</p>}
+      {node.kind === "test" && node.sync === "stale" && <p className="warn">No test files match these paths.</p>}
+      {(node.kind === "component" || node.kind === "test") && (
         <>
-          <h3>Code</h3>
+          <h3>{node.kind === "test" ? "Test files" : "Code"}</h3>
           <ul className="paths">
             {node.paths.map((p) => (
               <li key={p}>
@@ -208,13 +266,46 @@ function NodePanel({
           </ul>
         </>
       )}
-      {d && d.outgoing.length > 0 && <Links title="Depends on" nodes={nodes} ids={d.outgoing.map((e) => e.to)} onPick={onPick} />}
-      {d && d.incoming.length > 0 && <Links title="Used by" nodes={nodes} ids={d.incoming.map((e) => e.from)} onPick={onPick} />}
+      {d?.parent !== undefined && nodes.get(d.parent)?.kind === "process" && <Links title="Part of" nodes={nodes} ids={[d.parent]} onPick={onPick} />}
+      {d && groupLinks(d.outgoing, "out").map(([title, ids]) => <Links key={`out:${title}`} title={title} nodes={nodes} ids={ids} onPick={onPick} />)}
+      {d && groupLinks(d.incoming, "in").map(([title, ids]) => <Links key={`in:${title}`} title={title} nodes={nodes} ids={ids} onPick={onPick} />)}
       {d && d.decisions.length > 0 && <Links title="Shaped by" nodes={nodes} ids={d.decisions} onPick={onPick} />}
       <h3>Questions for Claude</h3>
-      <FlagBox subject={node.id} flags={flags.get(node.id) ?? []} placeholder={`Why is ${node.name} built this way?`} />
+      <FlagBox subject={node.id} flags={flags.get(node.id) ?? []} placeholder={flagPrompt(node)} />
     </aside>
   );
+}
+
+const SENSITIVITY: Record<"public" | "internal" | "pii" | "secret", string> = {
+  public: "Public data.",
+  internal: "Internal data, not personal or secret.",
+  pii: "Personal data: who can read it matters.",
+  secret: "Secret: credentials or keys.",
+};
+
+const ASSUMPTION: Record<"open" | "confirmed" | "rejected", string> = {
+  open: "Not confirmed yet. Only you can say whether this is true: flag it below.",
+  confirmed: "Confirmed.",
+  rejected: "Rejected: the code may still rely on it.",
+};
+
+/** A model node's edges, grouped under their arrow names ("Done by", "Tested by"), in the order of EDGE_LABEL. */
+function groupLinks(edges: ModelEdge[], side: "out" | "in"): [string, string[]][] {
+  const groups = new Map<string, string[]>();
+  for (const kind of Object.keys(EDGE_LABEL) as ViewEdgeKind[]) {
+    const ids = edges.filter((e) => e.kind === kind).map((e) => (side === "out" ? e.to : e.from));
+    if (ids.length === 0) continue;
+    const title = EDGE_LABEL[kind][side];
+    groups.set(title, [...(groups.get(title) ?? []), ...ids]);
+  }
+  return [...groups];
+}
+
+function flagPrompt(node: ModelNode): string {
+  if (node.kind === "assumption") return "Is this true? Say what you know.";
+  if (node.kind === "rule") return `Is this the rule you want?`;
+  if (node.kind === "step" || node.kind === "process") return `Is this how ${node.name} should go?`;
+  return `Why is ${node.name} built this way?`;
 }
 
 /**
@@ -241,11 +332,12 @@ function EdgePanel({
   const single = edge.sources.length === 1 ? model.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === subject) : undefined;
   const decisions = model.edges.filter((e) => e.kind === "decided_by" && edge.sources.includes(e.from)).map((e) => e.to);
   return (
-    <aside className="panel" aria-label="Dependency">
-      <p className="kind">{edge.kind === "uses" ? "Uses" : "Dependency"}</p>
+    <aside className="panel" aria-label={EDGE_LABEL[edge.kind].noun}>
+      <p className="kind">{EDGE_LABEL[edge.kind].noun}</p>
       <h2>
         {name(edge.from)} → {name(edge.to)}
       </h2>
+      {edge.label && <p>When {edge.label}.</p>}
       {single?.mode && (
         <p>
           {single.mode === "async" ? "Asynchronous" : single.mode === "data" ? "Through shared data" : "Synchronous call"}
@@ -269,7 +361,11 @@ function EdgePanel({
       )}
       {decisions.length > 0 && <Links title="Shaped by" nodes={nodes} ids={decisions} onPick={onPick} />}
       <h3>Questions for Claude</h3>
-      <FlagBox subject={subject} flags={flags.get(subject) ?? []} placeholder={`Why does ${name(edge.from)} depend on ${name(edge.to)}?`} />
+      <FlagBox
+        subject={subject}
+        flags={flags.get(subject) ?? []}
+        placeholder={edge.kind === "depends_on" ? `Why does ${name(edge.from)} depend on ${name(edge.to)}?` : `Why ${EDGE_LABEL[edge.kind].out.toLowerCase()} ${name(edge.to)}?`}
+      />
     </aside>
   );
 }

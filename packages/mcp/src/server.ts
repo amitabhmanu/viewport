@@ -125,9 +125,9 @@ export function createServer(root: string): McpServer {
     "model_view",
     {
       description:
-        "A named view of the model, split into sub-views that fit the element budget for the level. Names: overview, containers, components:<container id>, code-map.",
+        "A named view of the model, split into sub-views that fit the element budget for the level (a process view splits into one part per path, main path first). Names: overview, containers, components:<container id>, code-map, processes, process:<process id>, rules, data, coverage, deploy.",
       inputSchema: {
-        name: z.string().describe("overview, containers, components:<container id> or code-map"),
+        name: z.string().describe("overview, containers, components:<container id>, code-map, processes, process:<process id>, rules, data, coverage or deploy"),
         level: z.enum(["simple", "medium", "complex"]).default("medium"),
       },
       annotations: read,
