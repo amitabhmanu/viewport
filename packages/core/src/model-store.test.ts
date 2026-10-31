@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readModel, serializeModel, writeModel } from "./model-store.js";
@@ -8,6 +8,15 @@ describe("model store", () => {
   it("reads a missing file as an empty model", async () => {
     const m = await readModel(join(await tempDir(), "model.json"));
     expect(m).toEqual({ version: 1, revision: 0, nodes: [], edges: [] });
+  });
+
+  it("names the file and the field when model.json is wrong", async () => {
+    const dir = join(await tempDir(), ".viewport");
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, "model.json"), JSON.stringify({ ...shopModel(), version: 2 }));
+    await expect(readModel(join(dir, "model.json"))).rejects.toThrow(".viewport/model.json is invalid: version: ");
+    await writeFile(join(dir, "model.json"), "{ nope");
+    await expect(readModel(join(dir, "model.json"))).rejects.toThrow(".viewport/model.json is not valid JSON");
   });
 
   it("round-trips and bumps the revision", async () => {

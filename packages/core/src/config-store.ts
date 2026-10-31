@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { parseFile } from "./fsutil.js";
 import { Config } from "./schema.js";
 
 export class ConfigMissingError extends Error {}
@@ -13,5 +14,5 @@ export async function readConfig(path: string): Promise<Config> {
     }
     throw err;
   }
-  return Config.parse(JSON.parse(text));
+  return parseFile(Config, text, path);
 }
