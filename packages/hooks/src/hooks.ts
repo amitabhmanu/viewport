@@ -10,6 +10,8 @@ import {
   dailyDigest,
   digestLine,
   enqueueJob,
+  jobHealth,
+  type JobHealth,
   explainDue,
   familiarityScores,
   listSources,
@@ -26,7 +28,7 @@ import {
   writeModel,
   writeModelFromAgent,
 } from "@viewport/core";
-import { isHealthy, readLock, spawnDaemon } from "@viewport/viewportd";
+import { isCurrent, isHealthy, readLock, spawnDaemon, stopDaemon } from "@viewport/viewportd";
 
 /** The fields of Claude Code's hook input that these hooks read. */
 export interface HookInput {
@@ -72,7 +74,11 @@ export const DECISION_RULE =
 export async function startViewer(root: string, script: string, env: NodeJS.ProcessEnv = process.env): Promise<void> {
   if (env.VIEWPORT_NO_DAEMON || !existsSync(script)) return;
   const lock = await readLock(root);
-  if (lock !== undefined && (await isHealthy(lock))) return;
+  if (lock !== undefined && (await isHealthy(lock))) {
+    if (isCurrent(lock, script)) return;
+    // Rebuilt since the daemon started: an old daemon can't read a newer model.
+    await stopDaemon(root);
+  }
   spawnDaemon(root, script);
 }
 
@@ -85,6 +91,7 @@ export async function sessionStart(root: string): Promise<HookOutput> {
   // For the developer's eyes, not Claude's context, so it costs no tokens (D-016).
   const digest = digestLine(dailyDigest(state, model, ledger, familiarityScores(state)));
   const showDigest = digest !== undefined && takeDigestTurn(state);
+  const jobs = jobProblem(jobHealth(state));
   state.close();
 
   const lines = ["Viewport keeps a model of this system in .viewport/ for the developer, who reads it in the viewer."];
@@ -94,7 +101,17 @@ export async function sessionStart(root: string): Promise<HookOutput> {
   lines.push(`Ledger: ${ledger.length} decision${ledger.length === 1 ? "" : "s"}${ledger.length > 0 ? `, latest ${ledger.at(-1)!.id}` : ""}. Read with ledger_get.`);
   if (flags.length > 0) lines.push(`The developer has ${flags.length} unanswered question${flags.length === 1 ? "" : "s"}: see flags_pending and answer with flags_resolve.`);
   lines.push(DECISION_RULE);
-  return { ...context("SessionStart", lines.join("\n")), ...(showDigest ? { systemMessage: digest } : {}) };
+  // Also for the developer only: Claude can't fix the developer's environment.
+  const message = [jobs, showDigest ? digest : undefined].filter((m) => m !== undefined).join("\n");
+  return { ...context("SessionStart", lines.join("\n")), ...(message !== "" ? { systemMessage: message } : {}) };
+}
+
+/** One line for the developer when background jobs keep failing, or undefined when they work. */
+export function jobProblem(health: JobHealth): string | undefined {
+  if (health.failedInARow === 0) return undefined;
+  const n = health.failedInARow;
+  const what = `Viewport: the last ${n} background job${n === 1 ? "" : "s"} failed, so no new explanations or quiz questions are being written.`;
+  return [what, health.hint ?? `Last error: ${(health.lastError ?? "unknown").slice(0, 200)}`].join(" ");
 }
 
 function overview(model: Model): string {

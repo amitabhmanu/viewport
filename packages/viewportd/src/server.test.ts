@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { addEvidence, appendDecision, initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { isHealthy, readLock, stopDaemon } from "./lock.js";
+import { daemonBuild, isCurrent, isHealthy, readLock, stopDaemon, writeLock } from "./lock.js";
 import { type Daemon, startDaemon } from "./server.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../fixtures/py-shop", import.meta.url));
@@ -243,5 +243,19 @@ describe("daemon process", () => {
     expect(await stopDaemon(root)).toBe(true);
     await new Promise((r) => setTimeout(r, 300));
     expect(await readLock(root)).toBeUndefined();
+  });
+
+  it("replaces a running daemon from an older build", async () => {
+    const run = (cmd: string) => promisify(execFile)("node", ["--disable-warning=ExperimentalWarning", MAIN, cmd, "--root", root]);
+    const first = (await run("ensure")).stdout.trim();
+    const old = (await readLock(root))!;
+    expect(old.build).toBe(daemonBuild(MAIN));
+    await writeLock({ ...old, build: 1 });
+    const second = (await run("ensure")).stdout.trim();
+    expect(second).not.toBe(first);
+    const lock = (await readLock(root))!;
+    expect(lock.pid).not.toBe(old.pid);
+    expect(isCurrent(lock, MAIN)).toBe(true);
+    expect(await stopDaemon(root)).toBe(true);
   });
 });

@@ -44,6 +44,7 @@ import {
   readModel,
   recentAnswers,
   recentJobs,
+  jobHealth,
   recordPrediction,
   removePin,
   salienceScores,
@@ -245,6 +246,8 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
         return withState((db) => calibration(db));
       case "GET /api/jobs":
         return withState((db) => recentJobs(db));
+      case "GET /api/job-health":
+        return withState((db) => jobHealth(db));
       case "GET /api/pins":
         return withState((db) => listPins(db));
       case "POST /api/pins": {

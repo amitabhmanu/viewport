@@ -6,6 +6,7 @@ import {
   type GradeCase,
   GradeOutput,
   type Job,
+  MODEL_VERSION,
   type Model,
   applyExplanation,
   applyGrade,
@@ -89,7 +90,7 @@ export function startWorker(root: string, options: WorkerOptions): Worker {
   };
 
   const run = async (job: Job) => {
-    const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+    const [model, ledger] = await Promise.all([readModelFor(paths.model), readLedger(paths.ledger)]);
     if (job.kind === "explain") {
       const subjects = (job.payload.subjects as string[] | undefined) ?? [];
       const system = await instructions(options.explainFiles);
@@ -117,6 +118,27 @@ export function startWorker(root: string, options: WorkerOptions): Worker {
       db.close();
     },
   };
+}
+
+/**
+ * Reads the model, and says plainly when it is in a newer format than this daemon was
+ * built for, which happens when the plugin is rebuilt while an old daemon keeps running.
+ */
+export async function readModelFor(path: string): Promise<Model> {
+  try {
+    return await readModel(path);
+  } catch (err) {
+    let version: unknown;
+    try {
+      version = (JSON.parse(await readFile(path, "utf8")) as { version?: unknown }).version;
+    } catch {
+      throw err;
+    }
+    if (typeof version === "number" && version > MODEL_VERSION) {
+      throw new Error(`the model is version ${version}, but this daemon is older than that and reads up to version ${MODEL_VERSION}`);
+    }
+    throw err;
+  }
 }
 
 /** An agent's instructions: its agent and skill files, without their frontmatter. */
@@ -161,7 +183,7 @@ export async function runClaude(root: string, options: ClaudeOptions, prompt: st
     "--append-system-prompt",
     system,
   ];
-  const child = spawn(cmd!, args, { cwd: root, env: { ...process.env, VIEWPORT_JOB: "1" }, stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+  const child = spawn(cmd!, args, { cwd: root, env: jobEnv(process.env), stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
   const out: Buffer[] = [];
   const err: Buffer[] = [];
   child.stdout.on("data", (b: Buffer) => out.push(b));
@@ -186,8 +208,34 @@ export async function runClaude(root: string, options: ClaudeOptions, prompt: st
       resolve(c);
     });
   });
-  if (code !== 0) throw new Error(`claude exited with ${code}: ${Buffer.concat(err).toString("utf8").slice(0, 300)}`);
-  const result = JSON.parse(Buffer.concat(out).toString("utf8")) as { structured_output?: unknown; result?: string; is_error?: boolean };
+  const stdout = Buffer.concat(out).toString("utf8");
+  if (code !== 0) throw new Error(`claude exited with ${code}: ${failureDetail(stdout, Buffer.concat(err).toString("utf8"))}`);
+  const result = JSON.parse(stdout) as { structured_output?: unknown; result?: string; is_error?: boolean };
   if (result.is_error) throw new Error(`claude reported an error: ${String(result.result).slice(0, 300)}`);
   return result.structured_output ?? JSON.parse(result.result ?? "null");
+}
+
+/**
+ * The environment for a job. VIEWPORT_JOBS_USE_LOGIN=1 drops ANTHROPIC_API_KEY, so a
+ * key meant for something else doesn't take precedence over the developer's claude.ai login.
+ */
+export function jobEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const next: NodeJS.ProcessEnv = { ...env, VIEWPORT_JOB: "1" };
+  if (env.VIEWPORT_JOBS_USE_LOGIN) delete next.ANTHROPIC_API_KEY;
+  return next;
+}
+
+/**
+ * Why a run failed. With JSON output, Claude Code puts the real error in stdout's
+ * `result`; stderr often holds only warnings, so both are kept, the result first.
+ */
+export function failureDetail(stdout: string, stderr: string): string {
+  let result: string | undefined;
+  try {
+    const parsed = JSON.parse(stdout) as { result?: unknown };
+    if (typeof parsed.result === "string" && parsed.result.trim() !== "") result = parsed.result.trim();
+  } catch {
+    if (stdout.trim() !== "") result = stdout.trim();
+  }
+  return [result, stderr.trim()].filter((s) => s !== undefined && s !== "").join(" | ").slice(0, 600) || "no output";
 }

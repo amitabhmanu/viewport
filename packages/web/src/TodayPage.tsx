@@ -1,4 +1,4 @@
-import type { Change, Decision, Digest, DigestDecision, Job, Model, ViewEdgeKind } from "@viewport/core";
+import type { Change, Decision, Digest, DigestDecision, Job, JobHealth, Model, ViewEdgeKind } from "@viewport/core";
 import { type MouseEvent, useState } from "react";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
@@ -20,6 +20,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   // The quiz is fetched once per visit: answering must not swap the card for the next one mid-read.
   const quiz = useLoad(api.quiz, []);
   const jobs = useLoad(api.jobs, [live.state, live.model]);
+  const health = useLoad(api.jobHealth, [live.state]);
   const answers = useLoad(api.answers, [live.state]);
   const scores = useLoad(api.salience, [live.model, live.ledger, live.state]);
   const calibration = useLoad(api.calibration, [live.state]);
@@ -53,6 +54,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   return (
     <section className="page narrow">
       <h1>Today</h1>
+      {health.data && <JobProblem health={health.data} />}
       <div className="tiles">
         {tiles.map(([label, n, href]) => (
           <a
@@ -304,5 +306,29 @@ function ExplainerStatus({ jobs }: { jobs: Job[] }) {
     <p className="muted explaining">
       Claude is writing explanations and questions for {parts} new or changed item{parts === 1 ? "" : "s"}.
     </p>
+  );
+}
+
+/**
+ * Says so when background jobs keep failing. Without it a broken explainer looks the same
+ * as a quiet day: no new takeaways, no quiz questions, and nothing to say why.
+ */
+export function JobProblem({ health }: { health: JobHealth }) {
+  if (health.failedInARow === 0) return null;
+  const n = health.failedInARow;
+  return (
+    <div className="job-problem" role="alert">
+      <p>
+        <strong>Background explanations aren't working.</strong> The last {n} job{n === 1 ? "" : "s"} failed, so no new takeaways or quiz questions
+        are being written.
+      </p>
+      {health.hint && <p>{health.hint}</p>}
+      {health.lastError && (
+        <details>
+          <summary>Last error{health.lastFailedAt ? `, ${new Date(health.lastFailedAt).toLocaleString()}` : ""}</summary>
+          <pre>{health.lastError}</pre>
+        </details>
+      )}
+    </div>
   );
 }

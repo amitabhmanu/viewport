@@ -1,10 +1,10 @@
-import { cp, mkdtemp, readFile } from "node:fs/promises";
+import { cp, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { answerQuiz, claimJob, enqueueJob, finishJob, initWorkspace, openState, readModel, recentAnswers, recentJobs, viewportPaths, writeModelFromAgent, writeQuizItems } from "@viewport/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { type Worker, startWorker } from "./worker.js";
+import { type Worker, failureDetail, jobEnv, readModelFor, startWorker } from "./worker.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../fixtures/py-shop", import.meta.url));
 const FAKE = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
@@ -44,6 +44,7 @@ const jobs = (root: string) => {
 let worker: Worker | undefined;
 afterEach(async () => {
   await worker?.stop();
+  worker = undefined;
   delete process.env.FAKE_CLAUDE_FAIL;
 });
 
@@ -126,5 +127,29 @@ describe("worker", () => {
     expect(tools.filter((t) => t === "")).toHaveLength(3);
     expect(tools.filter((t) => t === "Read,Grep,Glob")).toHaveLength(2);
     expect(calls[0]!.args[calls[0]!.args.indexOf("--append-system-prompt") + 1]).toContain("Grading an explain-back answer");
+  });
+});
+
+describe("job failures", () => {
+  it("reports Claude Code's own error from stdout, not just the warnings on stderr", () => {
+    const stdout = JSON.stringify({ type: "result", is_error: true, result: "Credit balance is too low" });
+    expect(failureDetail(stdout, "⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY is set\n")).toBe(
+      "Credit balance is too low | ⚠ claude.ai connectors are disabled because ANTHROPIC_API_KEY is set",
+    );
+    expect(failureDetail("", "boom")).toBe("boom");
+    expect(failureDetail("", "")).toBe("no output");
+  });
+
+  it("drops ANTHROPIC_API_KEY for jobs only when asked to use the login", () => {
+    expect(jobEnv({ ANTHROPIC_API_KEY: "k" })).toEqual({ ANTHROPIC_API_KEY: "k", VIEWPORT_JOB: "1" });
+    expect(jobEnv({ ANTHROPIC_API_KEY: "k", VIEWPORT_JOBS_USE_LOGIN: "1" })).toEqual({ VIEWPORT_JOBS_USE_LOGIN: "1", VIEWPORT_JOB: "1" });
+  });
+
+  it("says so when the model is newer than the daemon", async () => {
+    const root = await workspace();
+    const path = viewportPaths(root).model;
+    const model = JSON.parse(await readFile(path, "utf8")) as { version: number };
+    await writeFile(path, JSON.stringify({ ...model, version: 99 }));
+    await expect(readModelFor(path)).rejects.toThrow("the model is version 99, but this daemon is older than that and reads up to version 2");
   });
 });

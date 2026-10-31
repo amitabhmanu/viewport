@@ -69,3 +69,45 @@ export function requeueStale(db: DatabaseSync): number {
 export function recentJobs(db: DatabaseSync, limit = 20): Job[] {
   return (db.prepare("SELECT * FROM jobs ORDER BY id DESC LIMIT ?").all(limit) as unknown as JobRow[]).map(toJob);
 }
+
+/** Whether background jobs are working, for the viewer and the session-start message. */
+export interface JobHealth {
+  /** Jobs that failed since the last one that worked, newest first. */
+  failedInARow: number;
+  lastError?: string;
+  lastFailedAt?: string;
+  /** What to do about `lastError`, when it is a problem Viewport recognizes. */
+  hint?: string;
+}
+
+/** Counts the jobs that failed since the last one that finished well. */
+export function jobHealth(db: DatabaseSync): JobHealth {
+  const rows = db
+    .prepare("SELECT status, error, finished_at FROM jobs WHERE status IN ('done', 'failed') ORDER BY finished_at DESC, id DESC LIMIT 500")
+    .all() as unknown as Pick<JobRow, "status" | "error" | "finished_at">[];
+  const failed = rows.findIndex((r) => r.status === "done");
+  const failedInARow = failed === -1 ? rows.length : failed;
+  if (failedInARow === 0) return { failedInARow: 0 };
+  const last = rows[0]!;
+  const hint = jobErrorHint(last.error ?? "");
+  return {
+    failedInARow,
+    ...(last.error !== null ? { lastError: last.error } : {}),
+    ...(last.finished_at !== null ? { lastFailedAt: last.finished_at } : {}),
+    ...(hint !== undefined ? { hint } : {}),
+  };
+}
+
+/** A fix for the job failures Viewport has seen in practice. */
+export function jobErrorHint(error: string): string | undefined {
+  if (/ANTHROPIC_API_KEY|credit balance|invalid x-api-key|authentication_error/i.test(error)) {
+    return "Background jobs run claude -p, which uses ANTHROPIC_API_KEY from the environment ahead of your claude.ai login. Remove the key from the environment Claude Code starts in, or set VIEWPORT_JOBS_USE_LOGIN=1 so jobs ignore it, then restart Claude Code.";
+  }
+  if (/daemon is older than|"path":\s*\[\s*"version"\s*\]/.test(error)) {
+    return "The viewer's daemon was built before the model's current format. Run pnpm build, then node bin/viewportd stop; the next Claude Code session starts a fresh daemon.";
+  }
+  if (/could not run '/.test(error)) {
+    return "Install Claude Code's native build, or set VIEWPORT_CLAUDE to the claude executable, then restart Claude Code.";
+  }
+  return undefined;
+}

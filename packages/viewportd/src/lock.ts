@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
+import { readdirSync, statSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { viewportPaths, writeFileAtomic } from "@viewport/core";
 
 /** Where a running daemon advertises itself: one per repo, in local state. */
@@ -10,6 +11,8 @@ export interface DaemonLock {
   token: string;
   root: string;
   startedAt: string;
+  /** The build the daemon runs, from `daemonBuild`; missing on daemons from before it was recorded. */
+  build?: number;
 }
 
 export function lockPath(root: string): string {
@@ -67,7 +70,10 @@ export async function isHealthy(lock: DaemonLock): Promise<boolean> {
  */
 export async function ensureDaemon(root: string, script: string, waitMs = 5000): Promise<DaemonLock> {
   const existing = await readLock(root);
-  if (existing !== undefined && (await isHealthy(existing))) return existing;
+  if (existing !== undefined && (await isHealthy(existing))) {
+    if (isCurrent(existing, script)) return existing;
+    await stopDaemon(root);
+  }
   spawnDaemon(root, script);
   const deadline = Date.now() + waitMs;
   while (Date.now() < deadline) {
@@ -101,4 +107,38 @@ export async function stopDaemon(root: string): Promise<boolean> {
   for (let i = 0; i < 40 && alive(lock.pid); i++) await new Promise((r) => setTimeout(r, 50));
   await releaseLock(root, lock.pid);
   return true;
+}
+
+/**
+ * Identifies the daemon's build: the newest modification time among the built files of
+ * the daemon and the core library it runs. `script` is the daemon's dist/main.js.
+ */
+export function daemonBuild(script: string): number {
+  const dist = dirname(script);
+  let newest = 0;
+  for (const dir of [dist, join(dist, "..", "..", "core", "dist")]) {
+    const walk = (d: string) => {
+      let entries;
+      try {
+        entries = readdirSync(d, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const e of entries) {
+        const path = join(d, e.name);
+        if (e.isDirectory()) walk(path);
+        else if (e.name.endsWith(".js")) newest = Math.max(newest, statSync(path).mtimeMs);
+      }
+    };
+    walk(dir);
+  }
+  return Math.round(newest);
+}
+
+/**
+ * True when a running daemon was started from the current build. After `pnpm build`, an
+ * old daemon would keep running old code (and fail on a newer model), so it is replaced.
+ */
+export function isCurrent(lock: DaemonLock, script: string): boolean {
+  return lock.build === daemonBuild(script);
 }

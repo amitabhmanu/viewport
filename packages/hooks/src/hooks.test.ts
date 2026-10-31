@@ -3,9 +3,9 @@ import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { initWorkspace, openState, raiseFlag, readModel, recordDecision, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { claimJob, enqueueJob, finishJob, initWorkspace, openState, raiseFlag, readModel, recordDecision, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { beforeEach, describe, expect, it } from "vitest";
-import { DECISION_RULE, type HookInput, findWorkspace, postToolUse, sessionStart, stop, subagentStop } from "./hooks.js";
+import { DECISION_RULE, type HookInput, findWorkspace, jobProblem, postToolUse, sessionStart, stop, subagentStop } from "./hooks.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../fixtures/py-shop", import.meta.url));
 const COMPONENTS = ["api", "orders", "payments", "notifications", "storage"];
@@ -62,6 +62,26 @@ describe("findWorkspace", () => {
   it("finds .viewport above the session cwd, and nothing outside a workspace", async () => {
     expect(findWorkspace({ cwd: join(root, "src", "shop") }, {})).toBe(root);
     expect(findWorkspace({ cwd: await mkdtemp(join(tmpdir(), "viewport-none-")) }, {})).toBeUndefined();
+  });
+});
+
+describe("sessionStart job health", () => {
+  it("tells the developer, not Claude, when background jobs keep failing", async () => {
+    const db = openState(viewportPaths(root).stateDb);
+    enqueueJob(db, "explain", { subjects: ["app.orders"] });
+    finishJob(db, claimJob(db)!.id, "claude exited with 1: Credit balance is too low | ANTHROPIC_API_KEY is set");
+    db.close();
+    const out = await sessionStart(root);
+    expect(out?.systemMessage).toContain("the last 1 background job failed");
+    expect(out?.systemMessage).toContain("VIEWPORT_JOBS_USE_LOGIN=1");
+    expect(context(out)).not.toContain("background job");
+  });
+
+  it("says nothing when jobs work, and shows the last error when it has no fix to offer", () => {
+    expect(jobProblem({ failedInARow: 0 })).toBeUndefined();
+    expect(jobProblem({ failedInARow: 3, lastError: "timed out after 300s" })).toBe(
+      "Viewport: the last 3 background jobs failed, so no new explanations or quiz questions are being written. Last error: timed out after 300s",
+    );
   });
 });
 
