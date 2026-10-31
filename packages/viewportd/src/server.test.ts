@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
-import { appendDecision, initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { addEvidence, appendDecision, initWorkspace, openState, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { isHealthy, readLock, stopDaemon } from "./lock.js";
 import { type Daemon, startDaemon } from "./server.js";
@@ -97,6 +97,21 @@ describe("API", () => {
       ["app.api", { q: "trace", from: "app.api", direction: "downstream", nodes: 5 }],
       [null, { q: "slice", mode: "sync", nodes: 5 }],
     ]);
+  });
+
+  it("scores salience and familiarity, lowering familiarity for parts the developer had to look up", async () => {
+    const db = openState(viewportPaths(root).stateDb);
+    addEvidence(db, ["app.orders", "app.notifications"], "correct");
+    db.close();
+    await api("/api/trace?from=app.orders&direction=downstream");
+    await api("/api/trace?from=app.orders&direction=downstream&quiet=1");
+    await api("/api/seen", { method: "POST", body: JSON.stringify({ subjects: ["app.api"] }) });
+    const { familiarity, salience } = (await (await api("/api/salience")).json()) as { familiarity: Record<string, number>; salience: Record<string, number> };
+    expect(familiarity["app.orders"]).toBeCloseTo(0.45, 2);
+    expect(familiarity["app.notifications"]).toBeCloseTo(0.45, 2);
+    expect(familiarity["app.api"]).toBeCloseTo(0.02, 2);
+    expect(salience["app.orders"]).toBeLessThan(salience["app.storage"]!);
+    expect(await (await api("/api/calibration")).json()).toMatchObject({ answers: 0, weeks: [] });
   });
 
   it("records a guess at a decision before it is revealed", async () => {

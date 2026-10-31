@@ -1,7 +1,8 @@
 import type { Change, Decision, Job, Model } from "@viewport/core";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
-import { CHANGE_LABEL, KIND_LABEL, homeView, seenWith, toPredict } from "./labels.js";
+import { Calibration } from "./Calibration.js";
+import { CHANGE_LABEL, KIND_LABEL, bySalience, homeView, seenWith, toPredict } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { FLAG_STATUS } from "./Flags.js";
 import { PredictPrompt } from "./Predict.js";
@@ -19,6 +20,8 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const quiz = useLoad(api.quiz, []);
   const jobs = useLoad(api.jobs, [live.state, live.model]);
   const answers = useLoad(api.answers, [live.state]);
+  const scores = useLoad(api.salience, [live.model, live.ledger, live.state]);
+  const calibration = useLoad(api.calibration, [live.state]);
   const error = model.error ?? ledger.error ?? flags.error;
   if (error) return <p className="error">{error}</p>;
   if (!model.data) return <p className="muted page">Loading…</p>;
@@ -68,7 +71,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
         </>
       )}
       <AnswerList answers={answers.data ?? []} subjectName={(id) => model.data!.nodes.find((n) => n.id === id)?.name ?? id} />
-      {ledger.data && predictions.data && <PredictCards queue={toPredict(ledger.data, predictions.data)} go={go} />}
+      {ledger.data && predictions.data && <PredictCards queue={toPredict(ledger.data, predictions.data, scores.data?.salience)} go={go} />}
       <ExplainerStatus jobs={jobs.data ?? []} />
       <div className="section-head">
         <h2>What changed since you last looked</h2>
@@ -78,7 +81,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
         <p className="muted">You are up to date.</p>
       ) : (
         <ul className="changes">
-          {changes.map((c) => (
+          {bySalience(changes, scores.data?.salience ?? {}).map((c) => (
             <ChangeItem key={c.subject} c={c} model={model.data!} changes={changes} go={go} />
           ))}
         </ul>
@@ -126,6 +129,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
           </ul>
         </>
       )}
+      {calibration.data && <Calibration data={calibration.data} />}
     </section>
   );
 }

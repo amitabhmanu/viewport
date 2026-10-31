@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { EngageError, type QuizKind } from "./engage.js";
+import { addEvidence } from "./familiarity.js";
 import { enqueueJob } from "./jobs.js";
 
 /** Days until an item comes back, by rung: right answers climb, wrong ones start over. */
@@ -99,6 +100,7 @@ export function answerQuiz(db: DatabaseSync, itemId: number, answer: string, con
     );
     const nextDue = schedule(db, itemId, grade, now);
     if (row.kind !== "predict") enqueueJob(db, "grade", { answerId }, now.toISOString());
+    else if (grade) addEvidence(db, [row.subject], grade, now);
     db.exec("COMMIT");
     return { itemId, answerId, ...(grade ? { grade } : {}), ...(row.kind === "predict" && row.answer !== null ? { expected: row.answer } : {}), nextDue };
   } catch (err) {

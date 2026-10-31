@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { addEvidence } from "./familiarity.js";
 import type { Decision } from "./schema.js";
 
 export interface Flag {
@@ -139,6 +140,7 @@ export function recordPrediction(db: DatabaseSync, decision: Pick<Decision, "id"
   if (guess !== undefined && !decision.options.some((o) => o.name === guess)) throw new EngageError(`'${guess}' is not an option of ${decision.id}`);
   const correct = guess === undefined ? null : guess === decision.chosen ? 1 : 0;
   db.prepare("INSERT INTO predictions (at, decision_id, guess, skipped, correct) VALUES (?, ?, ?, ?, ?)").run(at, decision.id, guess ?? null, guess === undefined ? 1 : 0, correct);
+  if (correct !== null) addEvidence(db, [decision.id], correct === 1 ? "correct" : "wrong", new Date(at));
   return predictionFor(db, decision.id)!;
 }
 

@@ -17,7 +17,10 @@ import {
   addPin,
   answerQuiz,
   changesSince,
+  addEvidence,
+  calibration,
   dueQuiz,
+  familiarityScores,
   get,
   listFlags,
   listPins,
@@ -34,6 +37,7 @@ import {
   recentJobs,
   recordPrediction,
   removePin,
+  salienceScores,
   slice,
   trace,
   unresolvedFlags,
@@ -127,7 +131,13 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
         const query = askFrom(url.pathname === "/api/trace" ? "trace" : "slice", q);
         const result = query.q === "trace" ? trace(await graph(), query.from, query as TraceOptions) : slice(await graph(), query as SliceFilter);
         // The viewer re-runs a shown query when the model changes; only the asking is logged.
-        if (q.get("quiet") !== "1") withState((db) => logEvent(db, "query", query.q === "trace" ? query.from : null, { ...query, nodes: result.nodes.length }));
+        // Having to look a part up is a little evidence the developer did not have it in mind.
+        if (q.get("quiet") !== "1") {
+          withState((db) => {
+            logEvent(db, "query", query.q === "trace" ? query.from : null, { ...query, nodes: result.nodes.length });
+            addEvidence(db, result.nodes, "lookup");
+          });
+        }
         return result;
       }
       case "GET /api/predictions":
@@ -162,6 +172,15 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       }
       case "GET /api/answers":
         return withState((db) => recentAnswers(db));
+      case "GET /api/salience": {
+        const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+        return withState((db) => {
+          const familiarity = familiarityScores(db);
+          return { familiarity, salience: salienceScores(model, ledger, familiarity) };
+        });
+      }
+      case "GET /api/calibration":
+        return withState((db) => calibration(db));
       case "GET /api/jobs":
         return withState((db) => recentJobs(db));
       case "GET /api/pins":
@@ -216,7 +235,10 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
           throw new HttpError(400, "send the subjects you opened, or all: true");
         }
         const subjects = body.subjects as string[];
-        withState((db) => markSeen(db, subjects, revision));
+        withState((db) => {
+          markSeen(db, subjects, revision);
+          addEvidence(db, subjects, "view");
+        });
         return { ok: true };
       }
     }

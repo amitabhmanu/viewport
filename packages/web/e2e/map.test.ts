@@ -2,7 +2,7 @@ import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appendDecision, applyGrade, initWorkspace, openState, readModel, recentAnswers, resolveFlag, unresolvedFlags, viewportPaths, writeModel, writeModelFromAgent, writeQuizItems } from "@viewport/core";
+import { answerQuiz, appendDecision, applyGrade, initWorkspace, openState, readModel, recentAnswers, resolveFlag, unresolvedFlags, viewportPaths, writeModel, writeModelFromAgent, writeQuizItems } from "@viewport/core";
 import { type Daemon, startDaemon } from "@viewport/viewportd";
 import { type Browser, type Page, chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -124,7 +124,7 @@ describe("viewer", () => {
     await expect.poll(() => node("app.orders").getAttribute("class")).not.toContain("fresh");
   });
 
-  it("ranks the ledger by blast radius and filters by reversibility", async () => {
+  it("ranks the ledger by salience and filters by reversibility", async () => {
     const decision = (id: string, title: string, blastRadius: number, reversibility: "easy" | "one-way") => ({
       id,
       at: new Date().toISOString(),
@@ -260,6 +260,15 @@ describe("viewer", () => {
     await mine.locator(".tag.grade.partial", { hasText: "Partly right" }).waitFor();
     await mine.getByText("Right that sending is slow, but say what it would block.").waitFor();
     await mine.getByText("So a slow send never blocks an order.").waitFor();
+
+    // With enough graded answers, Today compares how sure the developer was with how right.
+    const more = openState(viewportPaths(root).stateDb);
+    const extra = writeQuizItems(more, [1, 2].map((n) => ({ subject: "app.orders", kind: "why" as const, question: `Extra ${n}?`, answer: "a" })), yesterday);
+    for (const id of extra) applyGrade(more, answerQuiz(more, id, "x", 5).answerId, { grade: "correct", feedback: "Yes." });
+    more.close();
+    const calibration = page.locator(".calibration");
+    await calibration.getByText("When you said Sure or Certain, you were right 100% of the time (2 answers).").waitFor();
+    expect(await calibration.locator(".bar").count()).toBe(2);
 
     const predict = page.locator(".quiz", { hasText: "Which did Claude pick?" });
     await predict.getByRole("radio", { name: "Certain" }).click();

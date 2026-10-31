@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { EngageError } from "./engage.js";
+import { addEvidence } from "./familiarity.js";
 import { subjectBrief } from "./explain.js";
 import { openJobs } from "./jobs.js";
 import { ModelGraph } from "./query/graph.js";
@@ -141,7 +142,8 @@ export interface GradedAnswer {
 }
 
 /**
- * Stores a grade and moves the item along the ladder from when it was answered. A later
+ * Stores a grade, counts it as evidence of familiarity with the subject, and moves the
+ * item along the ladder from when it was answered. A later
  * answer to the same item has already rescheduled it, so an older answer's grade is kept
  * but leaves the schedule alone.
  */
@@ -152,6 +154,7 @@ export function applyGrade(db: DatabaseSync, answerId: number, output: GradeOutp
   try {
     db.prepare("UPDATE quiz_answers SET grade = ?, feedback = ? WHERE id = ?").run(output.grade, output.feedback, answerId);
     if (latest === answerId) schedule(db, c.itemId, output.grade, new Date(c.at));
+    addEvidence(db, [c.subject], output.grade);
     db.exec("COMMIT");
   } catch (err) {
     db.exec("ROLLBACK");
