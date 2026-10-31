@@ -1,0 +1,4 @@
+# LF everywhere, so Windows checkouts match the generated schema, the model and the ledger byte for byte.
+* text=auto eol=lf
+*.wasm binary
+*.png binary

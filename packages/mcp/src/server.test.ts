@@ -1,7 +1,7 @@
 import { cp } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -228,8 +228,9 @@ describe("flag and engage tools", () => {
 
 describe("findRoot", () => {
   it("prefers --root, then CLAUDE_PROJECT_DIR, then the nearest .viewport directory", () => {
-    expect(findRoot(["--root", "/a"], { CLAUDE_PROJECT_DIR: "/b" }, "/c")).toBe("/a");
-    expect(findRoot([], { CLAUDE_PROJECT_DIR: "/b" }, "/c")).toBe("/b");
+    // resolve() so the expectation holds on Windows too, where "/a" becomes "D:\\a".
+    expect(findRoot(["--root", "/a"], { CLAUDE_PROJECT_DIR: "/b" }, "/c")).toBe(resolve("/a"));
+    expect(findRoot([], { CLAUDE_PROJECT_DIR: "/b" }, "/c")).toBe(resolve("/b"));
     expect(findRoot([], {}, join(root, "src", "shop"))).toBe(root);
   });
 });
