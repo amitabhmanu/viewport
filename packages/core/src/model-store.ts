@@ -1,6 +1,6 @@
 import { readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { stableStringify, writeFileAtomic } from "./fsutil.js";
+import { parseFile, stableStringify, writeFileAtomic } from "./fsutil.js";
 import { Model, NodeKind, edgeKey, emptyModel } from "./schema.js";
 
 const KIND_ORDER = NodeKind.options;
@@ -14,7 +14,7 @@ export async function readModel(path: string): Promise<Model> {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") return emptyModel();
     throw err;
   }
-  return Model.parse(JSON.parse(text));
+  return parseFile(Model, text, path);
 }
 
 /** Puts nodes and edges in a fixed order so that git diffs show only real changes. */
