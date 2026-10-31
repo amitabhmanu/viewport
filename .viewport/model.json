@@ -211,6 +211,13 @@
       "to": "d-008"
     },
     {
+      "from": "core.model",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-014"
+    },
+    {
       "from": "core.query",
       "kind": "decided_by",
       "source": "agent",
@@ -223,6 +230,13 @@
       "source": "agent",
       "sync": "unverified",
       "to": "d-011"
+    },
+    {
+      "from": "core.query",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-013"
     },
     {
       "from": "core.verify",
@@ -293,6 +307,13 @@
       "source": "agent",
       "sync": "unverified",
       "to": "d-006"
+    },
+    {
+      "from": "viewportd.daemon",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-014"
     },
     {
       "from": "web.data",
@@ -1049,8 +1070,8 @@
       "sync": "ok"
     },
     {
-      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
-      "fingerprint": "sha256:fc2d74e49c70c06a1e1b00f93dfc0a53",
+      "changedAt": "69cb0d28001b6720e5fa7a9e186cf1239b8ac773",
+      "fingerprint": "sha256:139bfb494d49f979b8d21761951961df",
       "id": "web.parts",
       "kind": "component",
       "name": "Shared views",
@@ -1174,8 +1195,26 @@
       "reversibility": "easy",
       "source": "agent",
       "sync": "unverified"
+    },
+    {
+      "blastRadius": 6,
+      "id": "d-013",
+      "kind": "decision",
+      "name": "How a failure spreads in a what-if",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 12,
+      "id": "d-014",
+      "kind": "decision",
+      "name": "Where comparing model revisions gets old revisions",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
     }
   ],
-  "revision": 22,
+  "revision": 25,
   "version": 2
 }

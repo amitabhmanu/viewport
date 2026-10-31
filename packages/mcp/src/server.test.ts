@@ -81,9 +81,11 @@ describe("tool list", () => {
       "model_upsert",
       "model_verify",
       "model_view",
+      "model_whatif",
     ]);
     for (const t of tools) expect(t.name).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
     expect(tools.find((t) => t.name === "model_get")?.annotations?.readOnlyHint).toBe(true);
+    expect(tools.find((t) => t.name === "model_whatif")?.annotations?.readOnlyHint).toBe(true);
   });
 });
 
@@ -104,6 +106,8 @@ describe("model tools", () => {
     });
     const views = (await call("model_view", { name: "components:app", level: "simple" })).json() as unknown as { elements: string[] }[];
     expect(views.flatMap((v) => v.elements)).toEqual(expect.arrayContaining(COMPONENTS.map((c) => `app.${c}`)));
+    expect((await call("model_whatif", { fails: "payment-provider" })).json()).toMatchObject({ effect: { "payment-provider": "fails", "app.payments": "down" } });
+    expect((await call("model_whatif", {})).isError).toBe(true);
   });
 
   it("verifies without writing", async () => {
