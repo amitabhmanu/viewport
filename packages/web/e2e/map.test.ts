@@ -88,6 +88,16 @@ describe("viewer", () => {
     expect(await node("app.orders").getAttribute("class")).toContain("selected");
   });
 
+  it("fits the view, zooms and fits again", async () => {
+    const level = page.locator(".zoom-level");
+    const fitted = await level.textContent();
+    await page.getByRole("button", { name: "Zoom in" }).click();
+    await expect.poll(() => level.textContent()).not.toBe(fitted);
+    expect(await page.getByRole("button", { name: /^Fit$/ }).getAttribute("aria-pressed")).toBe("false");
+    await page.getByRole("button", { name: /^Fit$/ }).click();
+    await expect.poll(() => level.textContent()).toBe(fitted);
+  });
+
   it("shows a model change within a second", async () => {
     await page.getByRole("radio", { name: "Complex" }).click();
     await expect.poll(() => page.url()).toContain("level=complex");

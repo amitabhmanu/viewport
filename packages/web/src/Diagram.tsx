@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { KIND_FAMILY, KIND_SHORT, arrowKeys, fit, fontFamily, kindsIn, measure, wrap } from "./boxes.js";
 import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, arrowText, subtitle } from "./labels.js";
 import { type Layout, layout, syncMarker } from "./layout.js";
+import { Zoom } from "./Zoom.js";
 
 interface Props {
   part: SplitView;
@@ -23,10 +24,12 @@ interface Props {
   notes?: Map<string, string>;
   /** Boxes to shade by comprehension debt, by node id. */
   debt?: Map<string, DebtBand> | undefined;
+  /** Draw inside a frame that fits the screen, zooms and pans (the Map). */
+  zoom?: boolean;
 }
 
 /** One sub-view as an SVG diagram: boxes for elements, dashed boxes for stubs, arrows for dependencies. */
-export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge, notes, debt }: Props) {
+export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge, notes, debt, zoom }: Props) {
   const [laid, setLaid] = useState<Layout>();
   useEffect(() => {
     let live = true;
@@ -43,8 +46,8 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
 
   if (laid === undefined) return <div className="diagram-loading">Laying out…</div>;
   const width = Math.max(laid.width, ...labels.map((l) => l.right + 8));
-  return (
-    <svg className="diagram" viewBox={`0 0 ${width} ${laid.height}`} width={width} height={laid.height} role="img" aria-label={part.title}>
+  const drawing = (scale: number) => (
+    <svg className="diagram" viewBox={`0 0 ${width} ${laid.height}`} width={width * scale} height={laid.height * scale} role="img" aria-label={part.title}>
       <defs>
         {/* Sized in the diagram's own units, so a thicker line keeps the same head. */}
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="10.5" orient="auto-start-reverse">
@@ -175,6 +178,13 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         </text>
       ))}
     </svg>
+  );
+  return zoom ? (
+    <Zoom width={width} height={laid.height} fitKey={part.id}>
+      {drawing}
+    </Zoom>
+  ) : (
+    drawing(1)
   );
 }
 

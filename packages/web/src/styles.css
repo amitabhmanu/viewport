@@ -114,6 +114,13 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 }
 
 .diagram { display: block; max-width: none; }
+.zoom { position: relative; }
+.zoom-frame { height: calc(100vh - 290px); min-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: grab; outline: none; touch-action: none; }
+.zoom-frame.panning { cursor: grabbing; user-select: none; }
+.zoom-tools { display: flex; width: max-content; margin: 0 0 6px auto; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.zoom-tools button { border-color: transparent; min-width: 30px; padding: 2px 8px; }
+.zoom-tools button[aria-pressed="true"] { background: var(--accent-soft); }
+.zoom-level { font-variant-numeric: tabular-nums; min-width: 52px !important; }
 .diagram-loading { color: var(--muted); padding: 24px 0; }
 .edge { fill: none; stroke: var(--edge); stroke-width: 1.5; }
 .edge.async { stroke-dasharray: 6 4; }
