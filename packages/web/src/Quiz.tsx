@@ -1,4 +1,4 @@
-import type { QuizItem, QuizResult } from "@viewport/core";
+import type { GradedAnswer, QuizItem, QuizResult } from "@viewport/core";
 import { useState } from "react";
 import { api } from "./api.js";
 
@@ -75,5 +75,43 @@ function QuizOutcome({ result, answer }: { result: QuizResult; answer: string })
       </p>
     );
   }
-  return <p className="result muted">Saved. Your answer is checked later. {back}</p>;
+  return <p className="result muted">Saved. Claude is checking it; the result shows under Your answers.</p>;
+}
+
+const GRADE_LABEL = { correct: "Right", partial: "Partly right", wrong: "Not quite" } as const;
+
+/** Written answers from the last week: checking, then the grade, Claude's feedback and a good answer. */
+export function AnswerList({ answers, subjectName }: { answers: GradedAnswer[]; subjectName: (id: string) => string }) {
+  if (answers.length === 0) return null;
+  return (
+    <>
+      <h2>Your answers</h2>
+      <ul className="flags flag-list answers">
+        {answers.map((a) => (
+          <li key={a.answerId} className={`answer ${a.grade ?? "pending"}`} data-answer={a.answerId}>
+            <p className="q">
+              <span className="muted">{subjectName(a.subject)}</span> {a.question}
+            </p>
+            <p className="yours">
+              <span className="muted">You said:</span> {a.answer}
+            </p>
+            {a.grade ? (
+              <>
+                <p className="a">
+                  <span className={`tag grade ${a.grade}`}>{GRADE_LABEL[a.grade]}</span> {a.feedback}
+                </p>
+                {a.grade !== "correct" && a.expected && (
+                  <p className="expected">
+                    <span className="muted">A good answer:</span> {a.expected}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="muted">Claude is checking this answer…</p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
 }

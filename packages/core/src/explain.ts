@@ -68,37 +68,39 @@ export function markExplained(db: DatabaseSync, model: Model, ledger: Decision[]
 /** The explainer's brief for one batch: the subjects in full, with just enough around them to place them. */
 export function explainPrompt(model: Model, ledger: Decision[], subjects: string[]): string {
   const graph = new ModelGraph(model);
-  const name = (id: string) => graph.nodes.get(id)?.name ?? id;
-  const strip = (n: ModelNode) => {
-    const { sync: _s, source: _o, changedAt: _c, takeaway: _t, takeaways: _ts, ...rest } = n;
-    if (rest.kind === "component") delete (rest as { fingerprint?: string }).fingerprint;
-    return rest;
-  };
   const system = graph.ofKind("system")[0];
   const lines = [
     `Explain these parts of ${system ? `${system.name} (${system.purpose})` : "the system"} for the developer who owns it, following the viewport-explaining instructions.`,
     "",
   ];
-  for (const s of subjects) {
-    const node = graph.nodes.get(s);
-    const decision = ledger.find((d) => d.id === s);
-    if (node) {
-      const out = graph.outgoing(node.id).filter((e) => e.kind === "depends_on" || e.kind === "uses");
-      const inc = graph.incoming(node.id).filter((e) => e.kind === "depends_on" || e.kind === "uses");
-      lines.push(`## ${s}`, JSON.stringify(strip(node)));
-      if (graph.parent(s)) lines.push(`Inside: ${name(graph.parent(s)!)}`);
-      if (out.length > 0) lines.push(`Depends on: ${out.map((e) => `${name(e.to)}${e.mode ? ` (${e.mode})` : ""}`).join(", ")}`);
-      if (inc.length > 0) lines.push(`Used by: ${inc.map((e) => name(e.from)).join(", ")}`);
-      const shaped = ledger.filter((d) => d.affects.includes(s));
-      if (shaped.length > 0) lines.push(`Decisions: ${shaped.map((d) => `${d.id} ${d.title} (chose ${d.chosen})`).join("; ")}`);
-    } else if (decision) {
-      const { at: _a, commit: _c, ...rest } = decision;
-      lines.push(`## ${s}`, JSON.stringify(rest));
-    }
-    lines.push("");
-  }
+  for (const s of subjects) lines.push(...subjectBrief(graph, ledger, s), "");
   lines.push(`Write a takeaway for every subject above and at most ${QUESTIONS_PER_SUBJECT} questions each. Use only the subject ids given.`);
   return lines.join("\n");
+}
+
+/** One subject as an agent sees it: the node or decision in full, and what it connects to. */
+export function subjectBrief(graph: ModelGraph, ledger: Decision[], s: string): string[] {
+  const name = (id: string) => graph.nodes.get(id)?.name ?? id;
+  const node = graph.nodes.get(s);
+  const decision = ledger.find((d) => d.id === s);
+  if (node) {
+    const { sync: _s, source: _o, changedAt: _c, takeaway: _t, takeaways: _ts, ...rest } = node;
+    if (rest.kind === "component") delete (rest as { fingerprint?: string }).fingerprint;
+    const out = graph.outgoing(node.id).filter((e) => e.kind === "depends_on" || e.kind === "uses");
+    const inc = graph.incoming(node.id).filter((e) => e.kind === "depends_on" || e.kind === "uses");
+    const lines = [`## ${s}`, JSON.stringify(rest)];
+    if (graph.parent(s)) lines.push(`Inside: ${name(graph.parent(s)!)}`);
+    if (out.length > 0) lines.push(`Depends on: ${out.map((e) => `${name(e.to)}${e.mode ? ` (${e.mode})` : ""}`).join(", ")}`);
+    if (inc.length > 0) lines.push(`Used by: ${inc.map((e) => name(e.from)).join(", ")}`);
+    const shaped = ledger.filter((d) => d.affects.includes(s));
+    if (shaped.length > 0) lines.push(`Decisions: ${shaped.map((d) => `${d.id} ${d.title} (chose ${d.chosen})`).join("; ")}`);
+    return lines;
+  }
+  if (decision) {
+    const { at: _a, commit: _c, ...rest } = decision;
+    return [`## ${s}`, JSON.stringify(rest)];
+  }
+  return [`## ${s}`, "(no longer in the model)"];
 }
 
 /**

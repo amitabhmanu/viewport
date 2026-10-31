@@ -1,6 +1,8 @@
 import type { Decision } from "@viewport/core";
 import { describe, expect, it } from "vitest";
-import { type RunScore, gate, leftoverFindings, matchDecisions, median, totalTokens } from "./score.js";
+import { BASELINES } from "./baselines.js";
+import { GRADER_LEDGER, GRADER_SET } from "./grader-set.js";
+import { type RunScore, agreement, gate, leftoverFindings, matchDecisions, median, totalTokens } from "./score.js";
 import { TASKS } from "./tasks.js";
 
 const decision = (id: string, title: string, chosen = "A", why = "because"): Decision => ({
@@ -92,5 +94,28 @@ describe("gate", () => {
   it("skips the overhead check without a baseline", () => {
     const { baselineTokens: _b, ...noBaseline } = run({});
     expect(gate([noBaseline]).checks.map((c) => c.name)).not.toContain("plugin token overhead");
+  });
+});
+
+describe("agreement", () => {
+  it("counts matching grades, with errors as misses", () => {
+    const score = agreement([
+      { label: "correct", grade: "correct" },
+      { label: "partial", grade: "wrong" },
+      { label: "wrong" },
+      { label: "wrong", grade: "wrong" },
+    ]);
+    expect(score).toEqual({ agreed: 2, total: 4, rate: 0.5, confusion: { "correct → correct": 1, "partial → wrong": 1, "wrong → error": 1, "wrong → wrong": 1 } });
+  });
+});
+
+describe("grader set", () => {
+  it("has 30 labelled answers about subjects the model or ledger knows, with every grade represented", () => {
+    const ids = new Set([...BASELINES["py-shop"].nodes.map((n) => (n as { id: string }).id), ...GRADER_LEDGER.map((d) => d.id)]);
+    const answers = GRADER_SET.flatMap((q) => q.answers);
+    expect(answers).toHaveLength(30);
+    expect(GRADER_SET.every((q) => ids.has(q.subject))).toBe(true);
+    const counts = answers.reduce<Record<string, number>>((n, [, label]) => ({ ...n, [label]: (n[label] ?? 0) + 1 }), {});
+    expect(Object.values(counts).every((n) => n >= 8)).toBe(true);
   });
 });

@@ -25,3 +25,11 @@ Tasks run from a clean model of their fixture (`packages/eval/src/baselines.ts`)
 
 - Token use for the same task varies by up to about 2x between runs, so a single run says little about overhead. Use `--repeat 2` or more for a gate decision.
 - The decision patterns are loose on purpose: a decision such as "Store note shares as separate grants in storage" counts for both "how shares are stored" and "where sharing logic lives". Read the ledgers in the results folder before trusting a pass.
+
+## Grader agreement (Phase 4)
+
+```
+pnpm build && pnpm eval:grader [--model sonnet] [--parallel 4] [--out FILE]
+```
+
+Grades 30 hand-labelled answers (`packages/eval/src/grader-set.ts`: six questions about `fixtures/py-shop`, five answers each) with the real `viewport-grader`, exactly as viewportd runs it, and reports how often its grade matches the label. The gate is 80%. Some answer keys are deliberately incomplete, and a few answers are right only by what the code does, so the set also exercises the second look. About 50 seconds and 50 short sonnet runs at `--parallel 6`.

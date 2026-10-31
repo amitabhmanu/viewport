@@ -2,7 +2,7 @@ import { cp, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { appendDecision, initWorkspace, openState, readModel, resolveFlag, unresolvedFlags, viewportPaths, writeModel, writeModelFromAgent, writeQuizItems } from "@viewport/core";
+import { appendDecision, applyGrade, initWorkspace, openState, readModel, recentAnswers, resolveFlag, unresolvedFlags, viewportPaths, writeModel, writeModelFromAgent, writeQuizItems } from "@viewport/core";
 import { type Daemon, startDaemon } from "@viewport/viewportd";
 import { type Browser, type Page, chromium } from "playwright";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -222,7 +222,7 @@ describe("viewer", () => {
     expect(await page.locator(".flag.resolved").count()).toBe(2);
   });
 
-  it("asks for confidence before an answer, grades predictions on the spot and shows takeaways", async () => {
+  it("asks for confidence before an answer, grades predictions on the spot, shows written grades and takeaways", async () => {
     const db = openState(viewportPaths(root).stateDb);
     const yesterday = new Date(Date.now() - 25 * 60 * 60 * 1000);
     writeQuizItems(
@@ -248,7 +248,18 @@ describe("viewer", () => {
     expect(await why.getByRole("button", { name: "Answer" }).isDisabled()).toBe(true);
     await why.getByRole("radio", { name: "Fairly sure" }).click();
     await why.getByRole("button", { name: "Answer" }).click();
-    await why.getByText("Saved. Your answer is checked later. It comes back in 1 day.").waitFor();
+    await why.getByText("Saved. Claude is checking it; the result shows under Your answers.").waitFor();
+    const mine = page.locator(".answers .answer", { hasText: "Sending is slow" });
+    await mine.getByText("Claude is checking this answer…").waitFor();
+    expect(await mine.textContent()).not.toContain("slow send never blocks");
+
+    // The grader runs in the daemon's worker, which this test leaves off; grade as it would.
+    const graded = openState(viewportPaths(root).stateDb);
+    applyGrade(graded, recentAnswers(graded)[0]!.answerId, { grade: "partial", feedback: "Right that sending is slow, but say what it would block." });
+    graded.close();
+    await mine.locator(".tag.grade.partial", { hasText: "Partly right" }).waitFor();
+    await mine.getByText("Right that sending is slow, but say what it would block.").waitFor();
+    await mine.getByText("So a slow send never blocks an order.").waitFor();
 
     const predict = page.locator(".quiz", { hasText: "Which did Claude pick?" });
     await predict.getByRole("radio", { name: "Certain" }).click();
