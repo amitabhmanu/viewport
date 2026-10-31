@@ -31,18 +31,21 @@ interface Props {
 /** One sub-view as an SVG diagram: boxes for elements, dashed boxes for stubs, arrows for dependencies. */
 export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge, notes, debt, zoom }: Props) {
   const [laid, setLaid] = useState<Layout>();
+  const kinds = new Map(part.elements.map((id) => [id, nodes.get(id)?.kind]));
+  const kindKey = [...kinds].map(([id, k]) => `${id}:${k}`).join(",");
   useEffect(() => {
     let live = true;
-    void layout(part).then((l) => live && setLaid(l));
+    void layout(part, (id) => kinds.get(id)).then((l) => live && setLaid(l));
     return () => {
       live = false;
     };
-  }, [part]);
+    // Lays out again only when the part or its boxes' kinds change, not on every new nodes map.
+  }, [part, kindKey]);
   const family = useMemo(fontFamily, []);
   // Name each box's kind only where kinds mix; a view of components alone needs no "Component" on every box.
   const mixed = kindsIn(part, nodes).length > 1;
   // Arrow text can reach past the last box; widen the drawing so it is not cut off.
-  const labels = useMemo(() => (laid ? laid.routes.flatMap((r) => (arrowText(r.kind, r.label) && r.points.length > 1 ? [placeLabel(arrowText(r.kind, r.label)!, r.points, family)] : [])) : []), [laid, family]);
+  const labels = useMemo(() => (laid ? laid.routes.flatMap((r) => (arrowText(r.kind, r.label) && r.points.length > 1 ? [placeLabel(arrowText(r.kind, r.label)!, r.points, family, r.labelAt)] : [])) : []), [laid, family]);
 
   if (laid === undefined) return <div className="diagram-loading">Laying out…</div>;
   const width = Math.max(laid.width, ...labels.map((l) => l.right + 8));
@@ -67,11 +70,11 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
           <g key={r.id}>
             <polyline
               data-edge={r.id}
-              className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${lit ? " lit" : ""}`}
+              className={`edge ${r.plain ? "plain" : r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${lit ? " lit" : ""}`}
               points={points}
               markerEnd={lit || fresh ? "url(#arrow-accent)" : "url(#arrow)"}
             />
-            {onSelectEdge && (
+            {onSelectEdge && !r.plain && (
               <polyline
                 className="edge-hit"
                 points={points}
@@ -86,6 +89,15 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         );
       })}
       {laid.boxes.map((b) => {
+        if (b.terminal) {
+          return (
+            <g key={b.id} className={`terminal ${b.terminal}`} transform={`translate(${b.x + b.width / 2},${b.y + b.height / 2})`} aria-label={b.terminal === "start" ? "Start" : "End"}>
+              <circle r={b.width / 2} />
+              {b.terminal === "end" && <circle r={b.width / 2 - 4} className="inner" />}
+              <title>{b.terminal === "start" ? "Start" : "End"}</title>
+            </g>
+          );
+        }
         const node = nodes.get(b.id);
         const name = node?.name ?? b.id;
         const marker = b.stub ? undefined : syncMarker(node);
@@ -223,7 +235,11 @@ function markerTitle(kind: ModelNode["kind"] | undefined, marker: "stale" | "unv
 }
 
 /** Text on an arrow, beside its longest segment if that runs down, below it if across. */
-function placeLabel(full: string, points: { x: number; y: number }[], family: string) {
+function placeLabel(full: string, points: { x: number; y: number }[], family: string, given?: { x: number; y: number }) {
+  if (given) {
+    const text = fit(full, 180, `11px ${family}`);
+    return { text, x: given.x + 2, y: given.y, anchor: "start" as const, right: given.x + 2 + measure(text, `11px ${family}`) };
+  }
   let best = 0;
   let at = { x: points[0]!.x, y: points[0]!.y };
   let across = false;

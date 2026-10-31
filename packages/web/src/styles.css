@@ -197,6 +197,10 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .legend li { display: flex; align-items: center; gap: 6px; }
 .legend .node { cursor: default; }
 .legend .node rect { stroke-width: 1.5; }
+.edge.plain { stroke: var(--edge); stroke-width: 1.5; }
+.terminal circle { fill: var(--ink); }
+.terminal.end circle { fill: none; stroke: var(--ink); stroke-width: 2; }
+.terminal.end circle.inner { fill: var(--ink); stroke: none; }
 .edge-label { fill: var(--muted); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
 
 /* What-if, comparisons and pins (Phase 9). */
