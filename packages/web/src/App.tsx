@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { subscribe } from "./api.js";
+import { api, subscribe } from "./api.js";
 import { AskPage } from "./AskPage.js";
 import { LedgerPage } from "./LedgerPage.js";
-import { LiveContext } from "./live.js";
+import { LiveContext, useLoad } from "./live.js";
 import { MapPage } from "./MapPage.js";
 import { useRoute } from "./router.js";
 import { TodayPage } from "./TodayPage.js";
@@ -33,6 +33,9 @@ export function App() {
     [],
   );
 
+  // One-way decisions not yet looked at stay counted on the tab until they are: Claude never waits, so this is the developer's nudge.
+  const digest = useLoad(api.digest, [live.ledger, live.state, live.model]);
+  const oneWay = digest.data?.oneWay.length ?? 0;
   const tab = TABS.find(([path]) => (path === "/" ? route.path === "/" : route.path.startsWith(path)))?.[0] ?? "/";
   return (
     <LiveContext.Provider value={live}>
@@ -50,6 +53,11 @@ export function App() {
               }}
             >
               {label}
+              {path === "/ledger" && oneWay > 0 && (
+                <span className="nav-count" title={`${oneWay} one-way decision${oneWay === 1 ? "" : "s"} to look at`}>
+                  {oneWay}
+                </span>
+              )}
             </a>
           ))}
         </nav>

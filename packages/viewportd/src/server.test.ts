@@ -76,6 +76,23 @@ describe("API", () => {
     expect((await api("/api/compare")).status).toBe(400);
   });
 
+  it("remembers a level per view, and reports debt and the digest", async () => {
+    const level = (q: string) => api(`/api/levels?${q}`).then((r) => r.json());
+    expect(await level("view=containers")).toEqual({ view: "containers", level: "medium" });
+    const set = await api("/api/levels", { method: "POST", body: JSON.stringify({ view: "containers", level: "complex" }) });
+    expect(set.status).toBe(200);
+    expect(await level("view=containers")).toEqual({ view: "containers", level: "complex" });
+    expect(await level("view=containers&level=simple")).toEqual({ view: "containers", level: "simple" });
+    expect((await api("/api/levels", { method: "POST", body: JSON.stringify({ view: "containers", dismiss: true }) })).status).toBe(200);
+    expect(await level("view=containers")).toEqual({ view: "containers", level: "complex" });
+    expect((await api("/api/levels", { method: "POST", body: JSON.stringify({ view: "containers", level: "huge" }) })).status).toBe(400);
+    expect((await api("/api/levels?view=containers&level=huge")).status).toBe(400);
+    expect((await api("/api/levels")).status).toBe(400);
+
+    expect(await (await api("/api/debt")).json()).toMatchObject({ gap: 100, containers: [{ id: "app" }] });
+    expect(await (await api("/api/digest")).json()).toEqual({ decisions: [], moreDecisions: 0, oneWay: [], quizDue: 0, answers: 0 });
+  });
+
   it("explains bad requests", async () => {
     const res = await api("/api/node?id=nope");
     expect(res.status).toBe(400);

@@ -24,7 +24,12 @@ import {
   failureImpact,
   keptRevisions,
   dueQuiz,
+  areaLevel,
+  comprehensionDebt,
+  dailyDigest,
+  dismissSuggestion,
   familiarityScores,
+  setAreaLevel,
   get,
   listFlags,
   listPins,
@@ -208,6 +213,33 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
           const familiarity = familiarityScores(db);
           return { familiarity, salience: salienceScores(model, ledger, familiarity) };
         });
+      }
+      case "GET /api/levels": {
+        const asked = q.get("level");
+        if (asked !== null && !LEVELS.has(asked)) throw new HttpError(400, `unknown level '${asked}'`);
+        const model = await readModel(paths.model);
+        return withState((db) => areaLevel(db, model, need("view"), (asked as Level | null) ?? undefined));
+      }
+      case "POST /api/levels": {
+        const body = JSON.parse(await readBody(req)) as { view?: unknown; level?: unknown; dismiss?: unknown };
+        if (typeof body.view !== "string" || body.view === "") throw new HttpError(400, "send the view");
+        const area = body.view;
+        if (body.dismiss === true) {
+          withState((db) => dismissSuggestion(db, area));
+          return { ok: true };
+        }
+        if (typeof body.level !== "string" || !LEVELS.has(body.level)) throw new HttpError(400, "send a level, or dismiss: true");
+        const level = body.level as Level;
+        withState((db) => setAreaLevel(db, area, level));
+        return { ok: true };
+      }
+      case "GET /api/debt": {
+        const model = await readModel(paths.model);
+        return withState((db) => comprehensionDebt(model, familiarityScores(db)));
+      }
+      case "GET /api/digest": {
+        const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+        return withState((db) => dailyDigest(db, model, ledger, familiarityScores(db)));
       }
       case "GET /api/calibration":
         return withState((db) => calibration(db));

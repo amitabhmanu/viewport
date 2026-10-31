@@ -20,6 +20,7 @@ export function QuizCard({ item, subject }: { item: QuizItem; subject: string })
     <li className="quiz decision" data-quiz={item.id}>
       <p className="muted">
         {item.kind === "what-if" ? "What if" : item.kind === "predict" ? "Predict" : "Why"} · {subject}
+        {item.stretch && " · A step up"}
       </p>
       <h2>{item.question}</h2>
       {result ? (

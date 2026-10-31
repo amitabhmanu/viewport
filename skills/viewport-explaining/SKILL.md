@@ -28,8 +28,10 @@ Write at most two questions per subject, only where there is something worth thi
 - **what-if**: what happens under a change or failure? "What happens to pending notifications if the app restarts?"
 - **predict**: for a decision, which option would you pick? Give the real options as `choices`, and the chosen one, word for word, as `answer`.
 
+Now and then, about one question in four, set `stretch` to true on a why or what-if question that assumes the `complex` level's vocabulary and depth: protocols, failure modes, key configuration. A right answer shows the developer is ready to step up, and the viewer poses at most one a day.
+
 Avoid trivia (file names, line counts, exact library versions), questions answered by the subject's own name, and anything the model you were given cannot support. If you are unsure, read the code with Read, Grep or Glob; do not guess.
 
 ## Output
 
-Return JSON matching the schema you are given: `takeaways` with `subject`, `simple`, `medium` and `complex`, and `questions` with `subject`, `kind`, `question`, `answer` and, for predict, `choices`. Use only the subject ids you were given.
+Return JSON matching the schema you are given: `takeaways` with `subject`, `simple`, `medium` and `complex`, and `questions` with `subject`, `kind`, `question`, `answer`, for predict `choices`, and optionally `stretch`. Use only the subject ids you were given.

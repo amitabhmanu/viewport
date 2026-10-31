@@ -1,6 +1,6 @@
-import type { Model } from "@viewport/core";
+import type { Change, Model } from "@viewport/core";
 import { describe, expect, it } from "vitest";
-import { PHASES, arrowText, boxNotes, homeView, phaseOf, phaseStart, trail, viewTitle, zoomTarget } from "./labels.js";
+import { PHASES, arrowText, boxNotes, changesByProcess, homeView, phaseOf, phaseStart, trail, viewTitle, zoomTarget } from "./labels.js";
 
 const meta = { source: "agent", sync: "unverified" } as const;
 const model = {
@@ -21,6 +21,63 @@ const model = {
   ],
 } as Model;
 const nodes = new Map(model.nodes.map((n) => [n.id, n]));
+
+describe("today's changes by process", () => {
+  const graph = {
+    nodes: [
+      { kind: "process", id: "ordering", name: "Ordering" },
+      { kind: "process", id: "billing", name: "Billing" },
+      { kind: "step", id: "ordering.place", name: "Place" },
+      { kind: "component", id: "orders", name: "Orders" },
+      { kind: "component", id: "shared", name: "Shared" },
+      { kind: "component", id: "misc", name: "Misc" },
+    ],
+    edges: [
+      { kind: "contains", from: "ordering", to: "ordering.place" },
+      { kind: "implements", from: "orders", to: "ordering.place" },
+      { kind: "implements", from: "shared", to: "ordering" },
+      { kind: "implements", from: "shared", to: "billing" },
+    ],
+  } as unknown as Model;
+  const change = (subject: string, nodes: string[] = [subject]) => ({ subject, what: "node", change: "changed", label: subject, nodes }) as Change;
+
+  it("files a change under the process its part serves, under both if it serves two, and the rest last", () => {
+    const groups = changesByProcess([change("misc"), change("orders"), change("shared"), change("ordering.place")], graph);
+    expect(groups.map((g) => [g.process, g.changes.map((c) => c.subject)])).toEqual([
+      ["ordering", ["orders", "shared", "ordering.place"]],
+      ["billing", ["shared"]],
+      [undefined, ["misc"]],
+    ]);
+  });
+
+  it("finds a process through either end of a dependency, and leaves decisions with the rest", () => {
+    const groups = changesByProcess([change("depends_on:misc->orders", ["misc", "orders"]), change("D-001", [])], graph);
+    expect(groups.map((g) => g.process)).toEqual(["ordering", undefined]);
+  });
+
+  it("files rules, their assumptions, tests and data under the process they bear on", () => {
+    const fuller = {
+      nodes: [...graph.nodes, ...["rule", "assumption", "test", "entity", "runtime"].map((kind) => ({ kind, id: kind, name: kind }))],
+      edges: [
+        ...graph.edges,
+        { kind: "constrained_by", from: "ordering.place", to: "rule" },
+        { kind: "assumes", from: "rule", to: "assumption" },
+        { kind: "covers", from: "test", to: "ordering.place" },
+        { kind: "owns", from: "orders", to: "entity" },
+      ],
+    } as unknown as Model;
+    const groups = changesByProcess(["rule", "assumption", "test", "entity", "runtime"].map((id) => change(id)), fuller);
+    expect(groups.map((g) => [g.process, g.changes.map((c) => c.subject)])).toEqual([
+      ["ordering", ["rule", "assumption", "test", "entity"]],
+      [undefined, ["runtime"]],
+    ]);
+  });
+
+  it("is one group when the model has no processes", () => {
+    const groups = changesByProcess([change("orders")], { ...graph, nodes: [], edges: [] });
+    expect(groups).toEqual([{ process: undefined, changes: [change("orders")] }]);
+  });
+});
 
 describe("arrow text", () => {
   it("names what a part does with data, and keeps a branch's condition", () => {

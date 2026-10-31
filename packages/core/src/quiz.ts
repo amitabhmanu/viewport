@@ -22,6 +22,8 @@ export interface QuizItem {
   choices?: string[];
   step: number;
   dueAt: string;
+  /** Posed a level up, to show whether the developer is ready for it. */
+  stretch?: boolean;
 }
 
 export interface QuizResult {
@@ -43,6 +45,7 @@ interface ItemRow {
   step: number;
   due_at: string;
   answer: string | null;
+  stretch: number;
 }
 
 const toItem = (r: ItemRow): QuizItem => ({
@@ -53,21 +56,31 @@ const toItem = (r: ItemRow): QuizItem => ({
   ...(r.choices !== null ? { choices: JSON.parse(r.choices) as string[] } : {}),
   step: r.step,
   dueAt: r.due_at,
+  ...(r.stretch ? { stretch: true } : {}),
 });
 
-function startOfDay(now: Date): Date {
+export function startOfDay(now: Date): Date {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-/** Questions due now, oldest first, up to what is left of today's allowance. */
+/** Questions due now, oldest first, up to what is left of today's allowance. At most one a day is posed a level up. */
 export function dueQuiz(db: DatabaseSync, now = new Date(), perDay = QUIZ_PER_DAY): QuizItem[] {
   const answered = (db.prepare("SELECT COUNT(*) AS n FROM quiz_answers WHERE at >= ?").get(startOfDay(now).toISOString()) as { n: number }).n;
   const left = Math.max(0, perDay - answered);
   if (left === 0) return [];
-  const rows = db.prepare("SELECT * FROM quiz_items WHERE due_at <= ? ORDER BY due_at, id LIMIT ?").all(now.toISOString(), left) as unknown as ItemRow[];
-  return rows.map(toItem);
+  const stretched = (db.prepare("SELECT COUNT(*) AS n FROM quiz_answers a JOIN quiz_items i ON i.id = a.item_id WHERE a.at >= ? AND i.stretch = 1").get(startOfDay(now).toISOString()) as { n: number }).n;
+  const rows = db.prepare("SELECT * FROM quiz_items WHERE due_at <= ? ORDER BY due_at, id").all(now.toISOString()) as unknown as ItemRow[];
+  let stretchLeft = stretched > 0 ? 0 : 1;
+  return rows
+    .filter((r) => {
+      if (!r.stretch) return true;
+      stretchLeft--;
+      return stretchLeft >= 0;
+    })
+    .slice(0, left)
+    .map(toItem);
 }
 
 /** Moves an item along the ladder after a grade, and returns when it is next due. */

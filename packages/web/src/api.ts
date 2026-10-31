@@ -1,4 +1,4 @@
-import type { AskQuery, Calibration, ChangesSince, Comparison, ImpactResult, Decision, GradedAnswer, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { AreaLevel, AskQuery, Calibration, ChangesSince, Comparison, ComprehensionDebt, Digest, ImpactResult, Decision, GradedAnswer, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -71,6 +71,11 @@ export const api = {
   pins: () => call<Pin[]>("/api/pins"),
   pin: (title: string, query: AskQuery) => call<Pin>("/api/pins", { method: "POST", body: JSON.stringify({ title, query }) }),
   unpin: (id: number) => call<{ ok: true }>(`/api/pins?${q({ id: String(id) })}`, { method: "DELETE" }),
+  level: (view: string, asked: string | undefined) => call<AreaLevel>(`/api/levels?${q({ view, ...(asked ? { level: asked } : {}) })}`),
+  setLevel: (view: string, level: Level) => call<{ ok: true }>("/api/levels", { method: "POST", body: JSON.stringify({ view, level }) }),
+  dismissLevel: (view: string) => call<{ ok: true }>("/api/levels", { method: "POST", body: JSON.stringify({ view, dismiss: true }) }),
+  debt: () => call<ComprehensionDebt>("/api/debt"),
+  digest: () => call<Digest>("/api/digest"),
   flag: (subject: string, text: string) => call<Flag>("/api/flags", { method: "POST", body: JSON.stringify({ subject, text }) }),
 };
 

@@ -65,6 +65,28 @@ describe("findWorkspace", () => {
   });
 });
 
+describe("sessionStart digest", () => {
+  it("shows the developer one line once a day, outside Claude's context, and only when there is news", async () => {
+    expect((await sessionStart(root))?.systemMessage).toBeUndefined();
+    await recordDecision(root, {
+      title: "Pick a database",
+      options: [
+        { name: "Postgres", tradeoff: "Heavy" },
+        { name: "SQLite", tradeoff: "Local" },
+      ],
+      chosen: "Postgres",
+      why: "Several writers",
+      reversibility: "one-way",
+      affects: ["app.storage"],
+      assumptions: [],
+    });
+    const first = await sessionStart(root);
+    expect(first?.systemMessage).toContain('1 one-way decision to look at, starting with "Pick a database"');
+    expect(context(first)).not.toContain("one-way decision to look at");
+    expect((await sessionStart(root))?.systemMessage).toBeUndefined();
+  });
+});
+
 describe("sessionStart", () => {
   it("gives a short overview, the ledger size, open flags and the decision rule", async () => {
     await recordDecision(root, {
