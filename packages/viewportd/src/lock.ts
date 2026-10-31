@@ -83,6 +83,7 @@ export function spawnDaemon(root: string, script: string): void {
   const child = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", script, "serve", "--root", root], {
     detached: true,
     stdio: "ignore",
+    windowsHide: true,
   });
   child.unref();
 }

@@ -21,3 +21,18 @@ jobs:
       - run: pnpm check
       - name: Validate plugin manifest
         run: npx -y @anthropic-ai/claude-code plugin validate .
+
+  # The plugin runs on the developer's machine, Windows included. This job builds
+  # it there and runs the tests that do not need a browser.
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm exec vitest run packages/core packages/hooks packages/mcp packages/viewportd packages/eval
