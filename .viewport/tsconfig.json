@@ -1,0 +1,12 @@
+{
+  // Viewport's TypeScript scanner skips node_modules, so it cannot follow pnpm
+  // workspace imports on its own. These aliases map each package to its source.
+  "compilerOptions": {
+    "baseUrl": "..",
+    "paths": {
+      "@viewport/core": ["packages/core/src/index.ts"],
+      "@viewport/mcp": ["packages/mcp/src/index.ts"],
+      "@viewport/viewportd": ["packages/viewportd/src/index.ts"]
+    }
+  }
+}

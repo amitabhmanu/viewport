@@ -62,3 +62,7 @@ At each checkpoint (when Claude finishes with the model in step), the Stop hook 
 Viewport also keeps a rough estimate of what you know. Each part and decision has a familiarity score from 0 to 1 that halves every 14 days without fresh evidence. A right answer or guess raises it a lot, a partial answer a little, a wrong one halves it, having to trace or slice a part lowers it slightly, and opening a change raises it only up to 0.3. Today's change list, its predict cards and the Ledger are ranked by salience: (1 − familiarity) × blast radius × recency × reversibility weight (one-way 3, costly 1.5, easy 1). New-to-you, wide-reaching and hard-to-undo items come first. Once a few answers are graded, Today also compares how sure you said you were with how often you were right.
 
 `pnpm build` builds the viewer into `packages/web/dist`, which the daemon serves. For UI work, `pnpm --filter @viewport/web dev` runs Vite; the viewer's end-to-end test (`packages/web/e2e`) needs Chromium, which `pnpm --filter @viewport/web exec playwright install chromium` installs.
+
+## Dogfooding
+
+Viewport runs on its own repo: `.viewport/` holds its model of itself and a ledger seeded with its main past decisions. [docs/dogfood](docs/dogfood/README.md) has the Phase 5 routine. `bin/viewport stats --days 7` prints the weekly engagement numbers.
