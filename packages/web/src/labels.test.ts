@@ -110,3 +110,11 @@ describe("predictions", () => {
     expect(firsts.size).toBeGreaterThan(1);
   });
 });
+
+describe("step order", () => {
+  it("follows next arrows from the start, the unconditional way first, then the rest", async () => {
+    const { stepOrder } = await import("./labels.js");
+    const e = (from: string, to: string, when?: string) => ({ kind: "next", from, to, ...(when ? { when } : {}), source: "agent", sync: "ok" }) as Model["edges"][number];
+    expect(stepOrder(["pay", "ship", "start", "refund", "loop"], [e("start", "pay"), e("pay", "refund", "it failed"), e("pay", "ship"), e("loop", "loop")])).toEqual(["start", "pay", "ship", "refund", "loop"]);
+  });
+});

@@ -103,6 +103,15 @@ h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: v
 .mini i.focus { background: var(--accent); }
 .panel { width: 300px; flex-shrink: 0; border-left: 1px solid var(--line); background: var(--surface); padding: 16px; overflow: auto; }
 .panel .kind { margin: 0; font-size: 12px; color: var(--muted); }
+.kind-chip { display: inline-block; padding: 0 8px; border: 1px solid var(--k, var(--line)); border-radius: 999px; color: var(--k, var(--muted)); font-weight: 600; }
+.family-flow { --k: var(--k-flow); }
+.family-rule { --k: var(--k-rule); }
+.family-assumption { --k: var(--stale); }
+.family-data { --k: var(--k-data); }
+.family-test { --k: var(--k-test); }
+.family-runtime { --k: var(--k-runtime); }
+.link-kind { color: var(--muted); font-size: 12px; }
+.panel ol.steps { padding-left: 20px; margin: 0; }
 .panel ul { list-style: none; padding: 0; margin: 0; }
 .panel textarea { width: 100%; font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
 .panel form button { margin-top: 6px; }
@@ -134,8 +143,8 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .node.system rect, .node.container rect { stroke: var(--ink); }
 .node.external rect { fill: var(--bg); stroke-dasharray: 4 3; }
 .node.stub rect { fill: none; stroke-dasharray: 3 3; }
-.node:hover rect, .node:focus-visible rect { stroke: var(--accent); }
-.node.selected rect { stroke: var(--accent); stroke-width: 3; fill: var(--accent-soft); }
+.node.node:hover rect, .node.node:focus-visible rect { stroke: var(--accent); }
+.node.node.selected rect { stroke-dasharray: none; stroke: var(--accent); stroke-width: 3; fill: var(--accent-soft); }
 .node .name { fill: var(--ink); font-weight: 600; font-size: 14px; }
 .node .sub { fill: var(--muted); font-size: 12px; }
 .node.stub .name { font-weight: 500; fill: var(--muted); }
@@ -169,12 +178,6 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .phases button:disabled:hover { border-color: transparent; }
 .phases .more { margin-left: 8px; border-left: 1px solid var(--line); border-radius: 0; padding-left: 12px; }
 /* Each family of v2 kinds has its own colour on the outline and the kind label, and its own line. */
-.node.family-flow { --k: var(--k-flow); }
-.node.family-rule { --k: var(--k-rule); }
-.node.family-assumption { --k: var(--stale); }
-.node.family-data { --k: var(--k-data); }
-.node.family-test { --k: var(--k-test); }
-.node.family-runtime { --k: var(--k-runtime); }
 .node.process rect { stroke: var(--k); stroke-width: 2; }
 .node.step rect { stroke: var(--k); }
 .node.rule rect { fill: var(--bg); stroke: var(--k); stroke-width: 1.5; }

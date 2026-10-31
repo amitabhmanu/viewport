@@ -295,3 +295,26 @@ export function shuffledOptions(d: Pick<Decision, "id" | "options">): Decision["
 export function takeaway(node: ModelNode | undefined, level: Level): string | undefined {
   return node?.takeaways?.[level] ?? node?.takeaway;
 }
+
+/**
+ * A process's steps in the order they run: from the steps nothing leads to, along
+ * "next" arrows, the unconditional way first. Steps on no path (a loop with no way
+ * in) come last, in the model's order.
+ */
+export function stepOrder(steps: string[], edges: Model["edges"]): string[] {
+  const own = new Set(steps);
+  const next = edges.filter((e) => e.kind === "next" && own.has(e.from) && own.has(e.to));
+  const into = new Set(next.map((e) => e.to));
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const visit = (id: string) => {
+    if (seen.has(id)) return;
+    seen.add(id);
+    out.push(id);
+    const onward = next.filter((e) => e.from === id).sort((a, b) => Number("when" in a && a.when !== undefined) - Number("when" in b && b.when !== undefined));
+    for (const e of onward) visit(e.to);
+  };
+  for (const s of steps) if (!into.has(s)) visit(s);
+  for (const s of steps) visit(s);
+  return out;
+}
