@@ -22,3 +22,4 @@ export * from "./grade.js";
 export * from "./familiarity.js";
 export * from "./salience.js";
 export * from "./calibration.js";
+export * from "./stats.js";

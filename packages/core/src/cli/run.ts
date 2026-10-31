@@ -7,6 +7,8 @@ import { readModel, serializeModel, writeModel } from "../model-store.js";
 import { viewportPaths } from "../paths.js";
 import { ModelGraph, QueryError, get, slice, trace, view, type Level, type ViewName } from "../query/index.js";
 import { applyReport, isClean, verify } from "../verify/index.js";
+import { openState } from "../state.js";
+import { engagementStats, formatStats } from "../stats.js";
 import { initWorkspace, writeModelFromAgent } from "../workspace.js";
 import { formatLedger, formatModelSummary, formatReport, plural } from "./format.js";
 import { ZodError } from "zod";
@@ -31,6 +33,7 @@ Commands:
   query trace <from> [--to X] [--upstream]
   query slice [--externals] [--mode M] [--sync S] [--decided-by D]
   query view <name> [--level simple|medium|complex]
+  stats [--days N]             Engagement numbers for the dogfood log (default: last 7 days)
 
 Options:
   --root DIR   Repo root (default: current directory)
@@ -56,6 +59,7 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
       mode: { type: "string" },
       sync: { type: "string" },
       "decided-by": { type: "string" },
+      days: { type: "string" },
       level: { type: "string", default: "medium" },
       help: { type: "boolean", short: "h", default: false },
     },
@@ -118,6 +122,18 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
         const graph = new ModelGraph(await readModel(paths.model));
         const result = runQuery(graph, sub, arg, values);
         io.out(JSON.stringify(result, null, 2));
+        return 0;
+      }
+      case "stats": {
+        const days = values.days === undefined ? 7 : Number(values.days);
+        if (!Number.isFinite(days) || days <= 0) throw new QueryError("--days needs a positive number");
+        const db = openState(paths.stateDb);
+        try {
+          const stats = engagementStats(db, new Date(), days);
+          print(stats, () => formatStats(stats));
+        } finally {
+          db.close();
+        }
         return 0;
       }
       case "help":

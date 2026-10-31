@@ -1,0 +1,1070 @@
+{
+  "edges": [
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.api"
+    },
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.cli"
+    },
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.edit"
+    },
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.learn"
+    },
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.model"
+    },
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.query"
+    },
+    {
+      "from": "core",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core.verify"
+    },
+    {
+      "from": "eval",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "eval.runs"
+    },
+    {
+      "from": "eval",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "eval.scoring"
+    },
+    {
+      "from": "eval",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "eval.tasks"
+    },
+    {
+      "from": "hooks",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "hooks.events"
+    },
+    {
+      "from": "mcp",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "mcp.server"
+    },
+    {
+      "from": "plugin",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "plugin.agents"
+    },
+    {
+      "from": "plugin",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "plugin.commands"
+    },
+    {
+      "from": "plugin",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "plugin.hooks"
+    },
+    {
+      "from": "plugin",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "plugin.skills"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "core"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "eval"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "hooks"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "mcp"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "plugin"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "viewportd"
+    },
+    {
+      "from": "viewport",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "web"
+    },
+    {
+      "from": "viewportd",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "viewportd.daemon"
+    },
+    {
+      "from": "web",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "web.data"
+    },
+    {
+      "from": "web",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "web.pages"
+    },
+    {
+      "from": "web",
+      "kind": "contains",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "web.parts"
+    },
+    {
+      "from": "core.model",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-002"
+    },
+    {
+      "from": "core.verify",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-003"
+    },
+    {
+      "from": "hooks.events",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-001"
+    },
+    {
+      "from": "mcp.server",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-001"
+    },
+    {
+      "from": "plugin.agents",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-006"
+    },
+    {
+      "from": "plugin.skills",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-001"
+    },
+    {
+      "from": "viewportd.daemon",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-004"
+    },
+    {
+      "from": "viewportd.daemon",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-005"
+    },
+    {
+      "from": "viewportd.daemon",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-006"
+    },
+    {
+      "from": "web.data",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-005"
+    },
+    {
+      "from": "core.api",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.cli"
+    },
+    {
+      "from": "core.api",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.edit"
+    },
+    {
+      "from": "core.api",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.learn"
+    },
+    {
+      "from": "core.api",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.model"
+    },
+    {
+      "from": "core.api",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.query"
+    },
+    {
+      "from": "core.api",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.verify"
+    },
+    {
+      "from": "core.cli",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.edit"
+    },
+    {
+      "from": "core.cli",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.learn"
+    },
+    {
+      "from": "core.cli",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.model"
+    },
+    {
+      "from": "core.cli",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.query"
+    },
+    {
+      "from": "core.cli",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.verify"
+    },
+    {
+      "from": "core.edit",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.model"
+    },
+    {
+      "from": "core.edit",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.query"
+    },
+    {
+      "from": "core.edit",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.verify"
+    },
+    {
+      "from": "core.learn",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.edit"
+    },
+    {
+      "from": "core.learn",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.model"
+    },
+    {
+      "from": "core.learn",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.query"
+    },
+    {
+      "from": "core.query",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.model"
+    },
+    {
+      "from": "core.verify",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.model"
+    },
+    {
+      "from": "eval.runs",
+      "kind": "depends_on",
+      "mode": "data",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "claude-code"
+    },
+    {
+      "from": "eval.runs",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "eval.runs",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "eval.scoring"
+    },
+    {
+      "from": "eval.runs",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "eval.tasks"
+    },
+    {
+      "from": "eval.runs",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "viewportd.daemon"
+    },
+    {
+      "from": "eval.scoring",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "eval.scoring",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "eval.tasks"
+    },
+    {
+      "from": "eval.scoring",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "viewportd.daemon"
+    },
+    {
+      "from": "hooks.events",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "hooks.events",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "viewportd.daemon"
+    },
+    {
+      "from": "mcp.server",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "plugin.agents",
+      "kind": "depends_on",
+      "mode": "data",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "mcp.server"
+    },
+    {
+      "from": "plugin.commands",
+      "kind": "depends_on",
+      "mode": "data",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "mcp.server"
+    },
+    {
+      "from": "plugin.hooks",
+      "kind": "depends_on",
+      "mode": "data",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "hooks.events"
+    },
+    {
+      "from": "viewportd.daemon",
+      "kind": "depends_on",
+      "mode": "data",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "claude-code"
+    },
+    {
+      "from": "viewportd.daemon",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "web.data",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "web.data",
+      "kind": "depends_on",
+      "mode": "data",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "viewportd.daemon"
+    },
+    {
+      "from": "web.pages",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "web.pages",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "web.data"
+    },
+    {
+      "from": "web.pages",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "web.parts"
+    },
+    {
+      "from": "web.parts",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.api"
+    },
+    {
+      "from": "web.parts",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "web.data"
+    },
+    {
+      "from": "developer",
+      "kind": "uses",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "viewport"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "viewport",
+      "kind": "system",
+      "name": "Viewport",
+      "purpose": "Keeps the system model in step with the code and passes the developer's flags to Claude.",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "goal": "See what is being built and what changed, and learn it.",
+      "id": "developer",
+      "kind": "actor",
+      "name": "Developer",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "id": "claude-code",
+      "kind": "external",
+      "name": "Claude Code",
+      "role": "Runs the plugin, and the claude CLI jobs the daemon and eval runner start",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "id": "core",
+      "kind": "container",
+      "name": "Core library",
+      "role": "Model, checks, queries and learning shared by every front end",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "TypeScript"
+    },
+    {
+      "id": "eval",
+      "kind": "container",
+      "name": "Evaluation harness",
+      "role": "Measures the plugin's answers with graded tasks",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "TypeScript"
+    },
+    {
+      "id": "hooks",
+      "kind": "container",
+      "name": "Hook scripts",
+      "role": "Runs on Claude Code events to keep the model current",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "TypeScript, esbuild"
+    },
+    {
+      "id": "mcp",
+      "kind": "container",
+      "name": "MCP server",
+      "role": "Lets Claude Code read and edit the model as tools",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "TypeScript, MCP SDK"
+    },
+    {
+      "id": "plugin",
+      "kind": "container",
+      "name": "Claude Code plugin",
+      "role": "What Claude Code loads: agents, skills, commands and hooks",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "Markdown, JSON"
+    },
+    {
+      "id": "viewportd",
+      "kind": "container",
+      "name": "Daemon",
+      "role": "Local server for the web app, with background jobs",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "TypeScript, Node"
+    },
+    {
+      "id": "web",
+      "kind": "container",
+      "name": "Web app",
+      "role": "Browser screens for the map, today, ledger and ask",
+      "source": "agent",
+      "sync": "unverified",
+      "tech": "React, Vite"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:28e98b4cdf09428e90072fb89a2fe860",
+      "id": "core.api",
+      "kind": "component",
+      "name": "Public API",
+      "paths": [
+        "packages/core/src/index.ts",
+        "packages/core/package.json",
+        "packages/core/tsconfig.json",
+        "packages/core/tsconfig.build.json"
+      ],
+      "role": "The entry point other packages import",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:b88de77cfdcf082cf9883f6dcbda205f",
+      "id": "core.cli",
+      "kind": "component",
+      "name": "Command line",
+      "paths": [
+        "packages/core/src/cli/**"
+      ],
+      "role": "The viewport command line",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:82a38ea877506efa89e75d40d7fbaae5",
+      "id": "core.edit",
+      "kind": "component",
+      "name": "Model edits",
+      "paths": [
+        "packages/core/src/model-edit*.ts",
+        "packages/core/src/workspace*.ts",
+        "packages/core/src/changes*.ts"
+      ],
+      "role": "Applies model edits and tracks what changed",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:02899192ca469d7c68d8fb278ab97515",
+      "id": "core.learn",
+      "kind": "component",
+      "name": "Learning loop",
+      "paths": [
+        "packages/core/src/quiz*.ts",
+        "packages/core/src/grade*.ts",
+        "packages/core/src/explain*.ts",
+        "packages/core/src/engage*.ts",
+        "packages/core/src/familiarity*.ts",
+        "packages/core/src/salience*.ts",
+        "packages/core/src/calibration*.ts",
+        "packages/core/src/jobs*.ts",
+        "packages/core/src/asks*.ts",
+        "packages/core/src/stats*.ts"
+      ],
+      "role": "Quizzes, grades and explains the model to the developer",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:68cb0b20402293a53464f773f5a63d6b",
+      "id": "core.model",
+      "kind": "component",
+      "name": "Model store",
+      "paths": [
+        "packages/core/src/schema*.ts",
+        "packages/core/src/json-schema*.ts",
+        "packages/core/src/gen-schema.ts",
+        "packages/core/src/model-store*.ts",
+        "packages/core/src/ledger*.ts",
+        "packages/core/src/config-store*.ts",
+        "packages/core/src/state*.ts",
+        "packages/core/src/paths.ts",
+        "packages/core/src/fsutil.ts",
+        "packages/core/src/test-helpers.ts"
+      ],
+      "role": "Defines the model schema and stores the model, ledger and local state",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:a5e87cb5f13e73c6d60481de45837fe1",
+      "id": "core.query",
+      "kind": "component",
+      "name": "Queries and views",
+      "paths": [
+        "packages/core/src/query/**"
+      ],
+      "role": "Answers graph questions and builds the views",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:cd2985782949e3cfc78e704424711b20",
+      "id": "core.verify",
+      "kind": "component",
+      "name": "Verification",
+      "paths": [
+        "packages/core/src/verify/**"
+      ],
+      "role": "Checks the model against the code",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:c2474e13f546bea1ad162999083d5e53",
+      "id": "eval.runs",
+      "kind": "component",
+      "name": "Evaluation runs",
+      "paths": [
+        "packages/eval/src/run*.ts",
+        "packages/eval/src/gate4*.ts",
+        "packages/eval/package.json",
+        "packages/eval/tsconfig.json",
+        "packages/eval/vitest.config.ts"
+      ],
+      "role": "Runs the tasks through Claude Code and gates the results",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:8062a3fcc7e9c79df69610525e8f7e3f",
+      "id": "eval.scoring",
+      "kind": "component",
+      "name": "Scoring",
+      "paths": [
+        "packages/eval/src/score*.ts",
+        "packages/eval/src/grader*.ts"
+      ],
+      "role": "Scores answers, with graders",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:9640cc3341495a4c05a60bf825c1b7c0",
+      "id": "eval.tasks",
+      "kind": "component",
+      "name": "Tasks and baselines",
+      "paths": [
+        "packages/eval/src/tasks*.ts",
+        "packages/eval/src/baselines*.ts"
+      ],
+      "role": "Defines the evaluation tasks and baseline answers",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:81a5d8edfac56cdf639e635786aa5aca",
+      "id": "hooks.events",
+      "kind": "component",
+      "name": "Hook scripts",
+      "paths": [
+        "packages/hooks/src/**",
+        "packages/hooks/build.mjs",
+        "packages/hooks/package.json",
+        "packages/hooks/tsconfig.json",
+        "packages/hooks/vitest.config.ts"
+      ],
+      "role": "Runs on Claude Code session, edit and stop events",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:42d5b591c06d8f48839a9be1b76ee79a",
+      "id": "mcp.server",
+      "kind": "component",
+      "name": "MCP tools",
+      "paths": [
+        "packages/mcp/src/**",
+        "packages/mcp/package.json",
+        "packages/mcp/tsconfig.json",
+        "packages/mcp/tsconfig.build.json",
+        "packages/mcp/vitest.config.ts"
+      ],
+      "role": "Exposes the model to Claude Code as tools",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb924",
+      "id": "plugin.agents",
+      "kind": "component",
+      "name": "Subagents",
+      "paths": [
+        "agents/**"
+      ],
+      "role": "Agents for modeling, explaining and grading",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb924",
+      "id": "plugin.commands",
+      "kind": "component",
+      "name": "Slash commands",
+      "paths": [
+        "commands/**"
+      ],
+      "role": "Commands: init, status, open and why",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb924",
+      "id": "plugin.hooks",
+      "kind": "component",
+      "name": "Hook wiring",
+      "paths": [
+        "hooks/hooks.json"
+      ],
+      "role": "Connects Claude Code events to the hook scripts",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:e3b0c44298fc1c149afbf4c8996fb924",
+      "id": "plugin.skills",
+      "kind": "component",
+      "name": "Skills",
+      "paths": [
+        "skills/**"
+      ],
+      "role": "Instructions on modeling, decisions and explaining",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:288e062974e5ae5e562e92a891878eb4",
+      "id": "viewportd.daemon",
+      "kind": "component",
+      "name": "Local daemon",
+      "paths": [
+        "packages/viewportd/src/**",
+        "packages/viewportd/package.json",
+        "packages/viewportd/tsconfig.json",
+        "packages/viewportd/tsconfig.build.json",
+        "packages/viewportd/vitest.config.ts"
+      ],
+      "role": "Serves the web app and runs background jobs",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:5ad03f59f4eb2948ba158d9e393209ef",
+      "id": "web.data",
+      "kind": "component",
+      "name": "Data access",
+      "paths": [
+        "packages/web/src/api*.ts",
+        "packages/web/src/live*.ts",
+        "packages/web/src/changes*.ts",
+        "packages/web/src/ask*.ts"
+      ],
+      "role": "Fetches the model and live updates from the daemon",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:ce9c0f0f2280b57a584cee7e1586cb26",
+      "id": "web.pages",
+      "kind": "component",
+      "name": "Pages",
+      "paths": [
+        "packages/web/src/App.tsx",
+        "packages/web/src/main.tsx",
+        "packages/web/src/router*.ts",
+        "packages/web/src/*Page.tsx",
+        "packages/web/e2e/**",
+        "packages/web/index.html",
+        "packages/web/vite.config.ts",
+        "packages/web/vitest.config.ts",
+        "packages/web/tsconfig.json",
+        "packages/web/package.json"
+      ],
+      "role": "The map, today, ledger and ask screens",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
+      "fingerprint": "sha256:8a2b9db0ece61b094ef23aa2926b6256",
+      "id": "web.parts",
+      "kind": "component",
+      "name": "Shared views",
+      "paths": [
+        "packages/web/src/Diagram*.tsx",
+        "packages/web/src/Flags*.tsx",
+        "packages/web/src/Quiz*.tsx",
+        "packages/web/src/Predict*.tsx",
+        "packages/web/src/Calibration*.tsx",
+        "packages/web/src/layout*.ts",
+        "packages/web/src/labels*.ts"
+      ],
+      "role": "Diagram, flags, quiz, predictions and labels shown on the pages",
+      "source": "agent",
+      "sync": "ok"
+    },
+    {
+      "blastRadius": 6,
+      "id": "d-001",
+      "kind": "decision",
+      "name": "The building agent never waits on the developer",
+      "reversibility": "costly",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 7,
+      "id": "d-002",
+      "kind": "decision",
+      "name": "Local state in node:sqlite",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 4,
+      "id": "d-003",
+      "kind": "decision",
+      "name": "Verify imports with tree-sitter compiled to WASM",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 5,
+      "id": "d-004",
+      "kind": "decision",
+      "name": "Background explainer and grader run as headless claude -p",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 7,
+      "id": "d-005",
+      "kind": "decision",
+      "name": "The viewer daemon listens on 127.0.0.1 with a token",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 6,
+      "id": "d-006",
+      "kind": "decision",
+      "name": "Grade written answers in two looks",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    }
+  ],
+  "revision": 10,
+  "version": 1
+}

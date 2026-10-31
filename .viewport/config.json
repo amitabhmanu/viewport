@@ -1,0 +1,22 @@
+{
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "fixtures/**",
+    "**/fixtures/**",
+    "**/e2e/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/test-helpers.ts"
+  ],
+  "languages": [
+    "typescript"
+  ],
+  "sources": [
+    "packages/**/*.{ts,tsx}"
+  ],
+  "typescript": {
+    "tsconfig": ".viewport/tsconfig.json"
+  },
+  "version": 1
+}
