@@ -2,7 +2,14 @@ import type { Change, Decision, Level, Model, ModelNode, Prediction, SplitView }
 
 /** The line under a node's name. Simple says what it does; medium adds the technology; complex leads with it. */
 export function subtitle(node: ModelNode, level: Level): string {
-  const role = "role" in node ? node.role : "purpose" in node ? node.purpose : "goal" in node ? node.goal : "";
+  const role =
+    "role" in node ? node.role
+    : "purpose" in node ? node.purpose
+    : "goal" in node ? node.goal
+    : "does" in node ? node.does
+    : "statement" in node ? node.statement
+    : "description" in node ? node.description
+    : "";
   const tech = "tech" in node && node.tech ? node.tech : "protocol" in node && node.protocol ? node.protocol : undefined;
   if (level === "simple" || tech === undefined) return role;
   if (level === "medium") return `${role} · ${tech}`;
@@ -16,6 +23,13 @@ export const KIND_LABEL: Record<ModelNode["kind"], string> = {
   container: "Container",
   component: "Component",
   decision: "Decision",
+  process: "Process",
+  step: "Step",
+  rule: "Business rule",
+  assumption: "Assumption",
+  entity: "Data",
+  test: "Tests",
+  runtime: "Runtime",
 };
 
 /** How a view name reads in the breadcrumb. */

@@ -7,7 +7,7 @@ import { ModelEditError, blastRadius, mergeIntoModel, recordDecision, removeFrom
 import { readModel } from "./model-store.js";
 import { viewportPaths } from "./paths.js";
 import { Model } from "./schema.js";
-import { shopModel, tempDir } from "./test-helpers.js";
+import { shopModel, shopModelV2, tempDir } from "./test-helpers.js";
 import { initWorkspace, writeModelFromAgent } from "./workspace.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../fixtures/py-shop", import.meta.url));
@@ -54,6 +54,18 @@ describe("removeFromModel", () => {
 describe("blastRadius", () => {
   it("counts named components and their direct dependents", () => {
     expect(blastRadius(shopModel(), ["app.notifications"])).toEqual(["app.notifications", "app.orders"]);
+  });
+
+  it("resolves processes, steps, rules, entities and runtimes to the components behind them", () => {
+    const model = shopModelV2();
+    // app.orders implements the steps; app.api and app.storage depend on it.
+    const orders = ["app.api", "app.orders", "app.storage"];
+    expect(blastRadius(model, ["ordering"])).toEqual(orders);
+    expect(blastRadius(model, ["ordering.refund"])).toEqual(orders);
+    expect(blastRadius(model, ["refund-shipped"])).toEqual(orders);
+    expect(blastRadius(model, ["order"])).toEqual(orders);
+    expect(blastRadius(model, ["server"])).toHaveLength(5);
+    expect(blastRadius(model, ["checkout-tests", "full-refund"])).toEqual([]);
   });
 
   it("resolves edges, containers and externals to components", () => {

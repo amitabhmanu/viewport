@@ -45,7 +45,7 @@ Or, from GitHub:
 
 ## Using it
 
-In a Python repo, run `/viewport:init` in Claude Code. It creates `.viewport/` (config, model, and a `.gitignore` entry for local state), and the `viewport-modeler` agent builds the first model. `/viewport:status` shows how well the model matches the code, and `/viewport:why <id>` explains a part of the system from the decision ledger. While building, Claude logs decisions as the `viewport-decisions` skill describes.
+In a Python repo, run `/viewport:init` in Claude Code. It creates `.viewport/` (config, model, and a `.gitignore` entry for local state), and the `viewport-modeler` agent builds the first model. Besides containers and components, the model (version 2) can hold business processes and their steps, business rules and the assumptions behind them, entities with their owner and sensitivity, test groups and what they cover, and runtimes. Verification checks that tests import the code that implements what they cover, and that an entity's owner names it in its code. The viewer draws these layers from Phase 8 on. `/viewport:status` shows how well the model matches the code, and `/viewport:why <id>` explains a part of the system from the decision ledger. While building, Claude logs decisions as the `viewport-decisions` skill describes.
 
 The CLI also works on its own: `bin/viewport status`, `bin/viewport verify --changed <file>`, `bin/viewport query trace <from> --to <to>`, and `bin/viewport --help` for the rest.
 

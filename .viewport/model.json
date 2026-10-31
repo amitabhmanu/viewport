@@ -197,11 +197,46 @@
       "to": "d-002"
     },
     {
+      "from": "core.model",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-007"
+    },
+    {
+      "from": "core.model",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-008"
+    },
+    {
+      "from": "core.query",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-008"
+    },
+    {
       "from": "core.verify",
       "kind": "decided_by",
       "source": "agent",
       "sync": "unverified",
       "to": "d-003"
+    },
+    {
+      "from": "core.verify",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-009"
+    },
+    {
+      "from": "depends_on:core.verify->core.query",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-010"
     },
     {
       "from": "hooks.events",
@@ -410,6 +445,14 @@
       "source": "agent",
       "sync": "ok",
       "to": "core.model"
+    },
+    {
+      "from": "core.verify",
+      "kind": "depends_on",
+      "mode": "sync",
+      "source": "agent",
+      "sync": "ok",
+      "to": "core.query"
     },
     {
       "from": "eval.runs",
@@ -705,7 +748,7 @@
       ],
       "role": "The entry point other packages import",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -718,7 +761,7 @@
       ],
       "role": "The viewport command line",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -733,7 +776,7 @@
       ],
       "role": "Applies model edits and tracks what changed",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -755,7 +798,7 @@
       ],
       "role": "Quizzes, grades and explains the model to the developer",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -777,7 +820,7 @@
       ],
       "role": "Defines the model schema and stores the model, ledger and local state",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -790,11 +833,11 @@
       ],
       "role": "Answers graph questions and builds the views",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:cd2985782949e3cfc78e704424711b20",
+      "changedAt": "128a6d21ed71b2a3ec8b3d60316a9afa8de2b937",
+      "fingerprint": "sha256:27d6e55c2515e1abcf512cc86065051e",
       "id": "core.verify",
       "kind": "component",
       "name": "Verification",
@@ -803,7 +846,7 @@
       ],
       "role": "Checks the model against the code",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -820,7 +863,7 @@
       ],
       "role": "Runs the tasks through Claude Code and gates the results",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -834,7 +877,7 @@
       ],
       "role": "Scores answers, with graders",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -848,7 +891,7 @@
       ],
       "role": "Defines the evaluation tasks and baseline answers",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -865,7 +908,7 @@
       ],
       "role": "Runs on Claude Code session, edit and stop events",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -882,7 +925,7 @@
       ],
       "role": "Exposes the model to Claude Code as tools",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -951,7 +994,7 @@
       ],
       "role": "Serves the web app and runs background jobs",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -967,7 +1010,7 @@
       ],
       "role": "Fetches the model and live updates from the daemon",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -989,7 +1032,7 @@
       ],
       "role": "The map, today, ledger and ask screens",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -1008,7 +1051,7 @@
       ],
       "role": "Diagram, flags, quiz, predictions and labels shown on the pages",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "blastRadius": 6,
@@ -1063,8 +1106,44 @@
       "reversibility": "easy",
       "source": "agent",
       "sync": "unverified"
+    },
+    {
+      "blastRadius": 7,
+      "id": "d-007",
+      "kind": "decision",
+      "name": "How the model schema moves to v2",
+      "reversibility": "costly",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 7,
+      "id": "d-008",
+      "kind": "decision",
+      "name": "How business processes are represented in the model",
+      "reversibility": "costly",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 4,
+      "id": "d-009",
+      "kind": "decision",
+      "name": "How test and entity links are checked against the code",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 6,
+      "id": "d-010",
+      "kind": "decision",
+      "name": "Where verification gets its graph lookups for link checks",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
     }
   ],
-  "revision": 10,
-  "version": 1
+  "revision": 17,
+  "version": 2
 }

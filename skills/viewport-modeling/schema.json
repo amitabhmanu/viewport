@@ -188,7 +188,16 @@
                   "contains",
                   "depends_on",
                   "uses",
-                  "decided_by"
+                  "decided_by",
+                  "next",
+                  "implements",
+                  "constrained_by",
+                  "assumes",
+                  "owns",
+                  "reads",
+                  "writes",
+                  "covers",
+                  "runs_on"
                 ],
                 "type": "string"
               },
@@ -223,6 +232,10 @@
               },
               "to": {
                 "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                "type": "string"
+              },
+              "when": {
+                "minLength": 1,
                 "type": "string"
               }
             },
@@ -716,6 +729,559 @@
                   "blastRadius"
                 ],
                 "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "goal": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "process",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "goal"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "does": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "step",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "does"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "rule",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "statement": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "statement"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "assumption",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "statement": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "status": {
+                    "default": "open",
+                    "enum": [
+                      "open",
+                      "confirmed",
+                      "rejected"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "statement"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "code": {
+                    "default": [],
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "description": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "entity",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "sensitivity": {
+                    "default": "internal",
+                    "enum": [
+                      "public",
+                      "internal",
+                      "pii",
+                      "secret"
+                    ],
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "description"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "test",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "paths": {
+                    "items": {
+                      "minLength": 1,
+                      "type": "string"
+                    },
+                    "minItems": 1,
+                    "type": "array"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "paths"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
+                  "changedAt": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "id": {
+                    "pattern": "^[a-z0-9][a-z0-9._-]*$",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "const": "runtime",
+                    "type": "string"
+                  },
+                  "name": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "role": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source": {
+                    "default": "agent",
+                    "enum": [
+                      "agent",
+                      "verified"
+                    ],
+                    "type": "string"
+                  },
+                  "sync": {
+                    "default": "unverified",
+                    "enum": [
+                      "ok",
+                      "stale",
+                      "unverified"
+                    ],
+                    "type": "string"
+                  },
+                  "takeaway": {
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "takeaways": {
+                    "properties": {
+                      "complex": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "medium": {
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "simple": {
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "simple",
+                      "medium",
+                      "complex"
+                    ],
+                    "type": "object"
+                  },
+                  "tech": {
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "kind",
+                  "role"
+                ],
+                "type": "object"
               }
             ]
           },
@@ -727,8 +1293,16 @@
           "type": "integer"
         },
         "version": {
-          "const": 1,
-          "type": "number"
+          "anyOf": [
+            {
+              "const": 1,
+              "type": "number"
+            },
+            {
+              "const": 2,
+              "type": "number"
+            }
+          ]
         }
       },
       "required": [
