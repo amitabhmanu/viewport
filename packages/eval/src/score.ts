@@ -147,3 +147,29 @@ export function agreement(results: { label: Grade; grade?: Grade | undefined }[]
   const agreed = results.filter((r) => r.grade === r.label).length;
   return { agreed, total: results.length, rate: results.length === 0 ? 0 : agreed / results.length, confusion };
 }
+
+/**
+ * Claude's edits between seeing a flag and answering it. The PostToolUse hook of the
+ * first edit to finish after the flag was raised hands it over; edits already issued
+ * in the same turn could not have seen it. So count edit calls in Claude's later turns
+ * up to its flags_resolve call. Edit events and the session's edit calls pair up in order.
+ */
+export function editsBeforeAnswer(transcript: string, editEvents: number[], flagEvent: number): number | undefined {
+  const EDITS = new Set(["Edit", "Write", "MultiEdit"]);
+  const calls: { message: string; name: string }[] = [];
+  for (const line of transcript.split("\n")) {
+    if (!line.trim()) continue;
+    const m = JSON.parse(line) as { type?: string; parent_tool_use_id?: string | null; message?: { id?: string; content?: { type: string; name?: string }[] } };
+    if (m.type !== "assistant" || m.parent_tool_use_id) continue;
+    for (const c of m.message?.content ?? []) if (c.type === "tool_use" && c.name) calls.push({ message: m.message?.id ?? "", name: c.name });
+  }
+  const edits = calls.filter((c) => EDITS.has(c.name));
+  const delivering = editEvents.findIndex((id) => id > flagEvent);
+  const resolve = calls.findIndex((c) => c.name.endsWith("flags_resolve"));
+  if (resolve === -1) return undefined;
+  if (delivering === -1) return 0;
+  const seenIn = edits[delivering]?.message;
+  const after = calls.findIndex((c, i) => i > calls.indexOf(edits[delivering]!) && c.message !== seenIn);
+  if (after === -1 || after > resolve) return 0;
+  return calls.slice(after, resolve).filter((c) => EDITS.has(c.name)).length;
+}

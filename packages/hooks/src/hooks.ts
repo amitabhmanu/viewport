@@ -134,7 +134,7 @@ export async function postToolUse(root: string, input: HookInput): Promise<HookO
       }
     }
     const flags = deliverFlags(state);
-    for (const f of flags) notes.push(`The developer flagged ${f.subject} (flag ${f.id}): "${f.text}". Answer with flags_resolve when you reach a good point.`);
+    for (const f of flags) notes.push(`The developer flagged ${f.subject} (flag ${f.id}): "${f.text}". The developer is waiting: answer it with flags_resolve before your next edit.`);
     return notes.length > 0 ? context("PostToolUse", notes.join("\n")) : undefined;
   } finally {
     recordEdit(state, file, input);

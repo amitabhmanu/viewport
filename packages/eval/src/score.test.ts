@@ -2,7 +2,7 @@ import type { Decision } from "@viewport/core";
 import { describe, expect, it } from "vitest";
 import { BASELINES } from "./baselines.js";
 import { GRADER_LEDGER, GRADER_SET } from "./grader-set.js";
-import { type RunScore, agreement, gate, leftoverFindings, matchDecisions, median, totalTokens } from "./score.js";
+import { type RunScore, agreement, editsBeforeAnswer, gate, leftoverFindings, matchDecisions, median, totalTokens } from "./score.js";
 import { TASKS } from "./tasks.js";
 
 const decision = (id: string, title: string, chosen = "A", why = "because"): Decision => ({
@@ -117,5 +117,23 @@ describe("grader set", () => {
     expect(GRADER_SET.every((q) => ids.has(q.subject))).toBe(true);
     const counts = answers.reduce<Record<string, number>>((n, [, label]) => ({ ...n, [label]: (n[label] ?? 0) + 1 }), {});
     expect(Object.values(counts).every((n) => n >= 8)).toBe(true);
+  });
+});
+
+describe("editsBeforeAnswer", () => {
+  const turn = (id: string, ...names: string[]) => JSON.stringify({ type: "assistant", parent_tool_use_id: null, message: { id, content: names.map((name) => ({ type: "tool_use", name })) } });
+  const resolve = "mcp__plugin_viewport_viewport__flags_resolve";
+
+  it("skips edits issued in the same turn as the one that delivered the flag", () => {
+    const transcript = [turn("m1", "Read", "Edit"), turn("m2", "Edit", "Edit", "Edit"), turn("m3", resolve), turn("m4", "Edit")].join("\n");
+    // Edit events 1, 3, 4, 5, 7 with the flag raised as event 2: edit 3 delivers it, in turn m2.
+    expect(editsBeforeAnswer(transcript, [1, 3, 4, 5, 7], 2)).toBe(0);
+  });
+
+  it("counts edits in later turns until the answer, and ignores subagents", () => {
+    const sub = JSON.stringify({ type: "assistant", parent_tool_use_id: "t1", message: { id: "s1", content: [{ type: "tool_use", name: "Edit" }] } });
+    const transcript = [turn("m1", "Edit"), turn("m2", "Edit"), sub, turn("m3", "Write"), turn("m4", "Edit", resolve)].join("\n");
+    expect(editsBeforeAnswer(transcript, [1, 3, 4, 5], 2)).toBe(2);
+    expect(editsBeforeAnswer([turn("m1", "Edit")].join("\n"), [1], 0)).toBeUndefined();
   });
 });

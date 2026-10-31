@@ -33,3 +33,20 @@ pnpm build && pnpm eval:grader [--model sonnet] [--parallel 4] [--out FILE]
 ```
 
 Grades 30 hand-labelled answers (`packages/eval/src/grader-set.ts`: six questions about `fixtures/py-shop`, five answers each) with the real `viewport-grader`, exactly as viewportd runs it, and reports how often its grade matches the label. The gate is 80%. Some answer keys are deliberately incomplete, and a few answers are right only by what the code does, so the set also exercises the second look. About 50 seconds and 50 short sonnet runs at `--parallel 6`.
+
+## Phase 4 gate
+
+```
+pnpm build && pnpm eval:gate4 [--task py-shipping] [--model sonnet] [--out DIR]
+```
+
+Claude builds a task with the plugin while a simulated reviewer drives the viewer's API, as the developer would. It raises one flag after Claude's first edit and guesses at every new decision. When the build stops, the harness's own daemon runs the explainer. The reviewer then answers every question it wrote: half the written answers paraphrase the answer key and half are guesses. The grader grades them. The gate passes when:
+
+- predictions are recorded
+- the flag is answered within 2 edits
+- the explainer writes questions
+- every answer is graded
+
+The third Phase 4 check, grader agreement, is `pnpm eval:grader`.
+
+Flag latency counts only the edits Claude made after it could see the flag, which it gets from the PostToolUse hook of the first edit to finish after the flag was raised. Edits issued in the same turn as that one were already in flight, so they don't count. The harness pairs edit events with the session's Edit and Write calls, in order, from the `stream-json` transcript. One run takes about two minutes, including the explainer and the grader.
