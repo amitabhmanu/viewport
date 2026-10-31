@@ -5,7 +5,7 @@ import { CHANGE_LABEL, KIND_LABEL, homeView, seenWith, toPredict } from "./label
 import { useLive, useLoad } from "./live.js";
 import { FLAG_STATUS } from "./Flags.js";
 import { PredictPrompt } from "./Predict.js";
-import { QuizCard } from "./Quiz.js";
+import { AnswerList, QuizCard } from "./Quiz.js";
 import { mapHref } from "./router.js";
 
 export function TodayPage({ go }: { go: (to: string) => void }) {
@@ -18,6 +18,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   // The quiz is fetched once per visit: answering must not swap the card for the next one mid-read.
   const quiz = useLoad(api.quiz, []);
   const jobs = useLoad(api.jobs, [live.state, live.model]);
+  const answers = useLoad(api.answers, [live.state]);
   const error = model.error ?? ledger.error ?? flags.error;
   if (error) return <p className="error">{error}</p>;
   if (!model.data) return <p className="muted page">Loading…</p>;
@@ -66,6 +67,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
           </ul>
         </>
       )}
+      <AnswerList answers={answers.data ?? []} subjectName={(id) => model.data!.nodes.find((n) => n.id === id)?.name ?? id} />
       {ledger.data && predictions.data && <PredictCards queue={toPredict(ledger.data, predictions.data)} go={go} />}
       <ExplainerStatus jobs={jobs.data ?? []} />
       <div className="section-head">

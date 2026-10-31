@@ -1,28 +1,47 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import {
+  type Decision,
   ExplainOutput,
+  type GradeCase,
+  GradeOutput,
   type Job,
+  type Model,
   applyExplanation,
+  applyGrade,
   claimJob,
+  enqueueJob,
   explainJsonSchema,
   explainPrompt,
   finishJob,
+  gradeCase,
+  gradeJsonSchema,
+  gradePrompt,
+  logEvent,
   openState,
   readLedger,
   readModel,
   requeueStale,
+  ungradedAnswers,
   viewportPaths,
 } from "@viewport/core";
 
-export interface WorkerOptions {
+export interface ClaudeOptions {
   /** The Claude Code command line to run, before its arguments. Defaults to `claude`, or VIEWPORT_CLAUDE. */
   command?: string[];
   model?: string;
   timeoutMs?: number;
+}
+
+export interface WorkerOptions extends ClaudeOptions {
   /** The explainer's instructions: agents/viewport-explainer.md and skills/viewport-explaining/SKILL.md. */
   explainFiles: string[];
+  /** The grader's instructions: agents/viewport-grader.md. */
+  gradeFiles: string[];
 }
+
+/** Read-only tools for a job that may look at the code; none for one that must not. */
+const READ_TOOLS = ["Read", "Grep", "Glob"];
 
 export interface Worker {
   /** Looks for queued work now, rather than at the next tick. */
@@ -43,6 +62,8 @@ export function startWorker(root: string, options: WorkerOptions): Worker {
   // create and remove its -wal and -shm files, which the daemon's watcher sees as new work.
   const db = openState(paths.stateDb);
   requeueStale(db);
+  // Answers saved while no daemon was running, or before there was a grader, get graded now.
+  for (const c of ungradedAnswers(db)) enqueueJob(db, "grade", { answerId: c.answerId });
 
   let busy: Promise<void> | undefined;
   let stopped = false;
@@ -68,12 +89,20 @@ export function startWorker(root: string, options: WorkerOptions): Worker {
   };
 
   const run = async (job: Job) => {
-    if (job.kind !== "explain") throw new Error(`unknown job kind '${job.kind}'`);
-    const subjects = (job.payload.subjects as string[] | undefined) ?? [];
     const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
-    const system = (await Promise.all(options.explainFiles.map((f) => readFile(f, "utf8")))).map((t) => t.replace(/^---[\s\S]*?---\n/, "").trim()).join("\n\n");
-    const output = await claude(root, options, explainPrompt(model, ledger, subjects), explainJsonSchema(), system);
-    await applyExplanation(paths.model, db, ledger, subjects, ExplainOutput.parse(output));
+    if (job.kind === "explain") {
+      const subjects = (job.payload.subjects as string[] | undefined) ?? [];
+      const system = await instructions(options.explainFiles);
+      const output = await runClaude(root, options, explainPrompt(model, ledger, subjects), explainJsonSchema(), system, READ_TOOLS);
+      await applyExplanation(paths.model, db, ledger, subjects, ExplainOutput.parse(output));
+    } else if (job.kind === "grade") {
+      const c = gradeCase(db, job.payload.answerId as number);
+      const result = await gradeAnswer(root, options, model, ledger, c, await instructions(options.gradeFiles));
+      applyGrade(db, c.answerId, result);
+      logEvent(db, "grade", String(c.itemId), { answerId: c.answerId, grade: result.grade, looks: result.looks });
+    } else {
+      throw new Error(`unknown job kind '${job.kind}'`);
+    }
   };
 
   const timer = setInterval(kick, TICK_MS);
@@ -90,8 +119,32 @@ export function startWorker(root: string, options: WorkerOptions): Worker {
   };
 }
 
+/** An agent's instructions: its agent and skill files, without their frontmatter. */
+export async function instructions(files: string[]): Promise<string> {
+  return (await Promise.all(files.map((f) => readFile(f, "utf8")))).map((t) => t.replace(/^---[\s\S]*?---\n/, "").trim()).join("\n\n");
+}
+
+/**
+ * Grades one written answer. The first look uses only the model, the ledger and the key,
+ * with no tools; a partial or wrong grade gets a second look that may read the code, and
+ * that grade stands.
+ */
+export async function gradeAnswer(
+  root: string,
+  options: ClaudeOptions,
+  model: Model,
+  ledger: Decision[],
+  c: GradeCase,
+  system: string,
+): Promise<GradeOutput & { looks: 1 | 2 }> {
+  const first = GradeOutput.parse(await runClaude(root, options, gradePrompt(model, ledger, c, false), gradeJsonSchema(), system, []));
+  if (first.grade === "correct") return { ...first, looks: 1 };
+  const second = GradeOutput.parse(await runClaude(root, options, gradePrompt(model, ledger, c, true), gradeJsonSchema(), system, READ_TOOLS));
+  return { ...second, looks: 2 };
+}
+
 /** One headless run: prompt on stdin, JSON on stdout, structured output checked against `schema`. */
-async function claude(root: string, options: WorkerOptions, prompt: string, schema: object, system: string): Promise<unknown> {
+export async function runClaude(root: string, options: ClaudeOptions, prompt: string, schema: object, system: string, tools: string[]): Promise<unknown> {
   const [cmd, ...pre] = options.command ?? (process.env.VIEWPORT_CLAUDE ? [process.env.VIEWPORT_CLAUDE] : ["claude"]);
   const args = [
     ...pre,
@@ -102,8 +155,9 @@ async function claude(root: string, options: WorkerOptions, prompt: string, sche
     JSON.stringify(schema),
     "--model",
     options.model ?? "sonnet",
-    "--allowed-tools",
-    "Read,Grep,Glob",
+    "--tools",
+    tools.join(","),
+    ...(tools.length > 0 ? ["--allowed-tools", tools.join(",")] : []),
     "--append-system-prompt",
     system,
   ];

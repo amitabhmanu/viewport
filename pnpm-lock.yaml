@@ -60,6 +60,9 @@ importers:
       '@viewport/core':
         specifier: workspace:*
         version: link:../core
+      '@viewport/viewportd':
+        specifier: workspace:*
+        version: link:../viewportd
 
   packages/hooks:
     dependencies:

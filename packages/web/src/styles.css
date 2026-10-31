@@ -185,3 +185,12 @@ a.button:hover { border-color: var(--accent); }
 button:disabled { opacity: .5; cursor: default; }
 .quiz h2 { margin: 2px 0 4px; }
 .explaining { font-size: 13px; }
+
+/* Graded written answers on Today */
+.answers .answer { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.answers .answer p { margin: 2px 0; }
+.answers .a { margin-top: 4px; }
+.answers .expected { padding-left: 10px; border-left: 2px solid var(--line); }
+.tag.grade.correct { border-color: #22a06b; color: #22a06b; }
+.tag.grade.partial { border-color: var(--accent); color: var(--accent); }
+.tag.grade.wrong { border-color: var(--stale); color: var(--stale); }

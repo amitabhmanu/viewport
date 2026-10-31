@@ -30,6 +30,7 @@ import {
   readConfig,
   readLedger,
   readModel,
+  recentAnswers,
   recentJobs,
   recordPrediction,
   removePin,
@@ -159,6 +160,8 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
           return result;
         });
       }
+      case "GET /api/answers":
+        return withState((db) => recentAnswers(db));
       case "GET /api/jobs":
         return withState((db) => recentJobs(db));
       case "GET /api/pins":

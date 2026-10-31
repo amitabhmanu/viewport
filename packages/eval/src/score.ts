@@ -1,4 +1,4 @@
-import type { Decision, VerificationReport } from "@viewport/core";
+import type { Decision, Grade, VerificationReport } from "@viewport/core";
 import type { ExpectedDecision } from "./tasks.js";
 
 /** Phase 2 gate thresholds, from the implementation plan. */
@@ -135,4 +135,15 @@ export function formatSummary(runs: RunScore[], result: GateResult): string {
     lines.push(`| ${r.task}${r.ok ? "" : ` (error: ${r.error ?? "?"})`} | ${r.logged} | ${matched} | ${r.leftover.join(", ") || "none"} | ${r.hookMs.length} | ${tokens} | ${cost} |`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+/** How often the grader's grade matches the hand label, and a count of each label → grade pair. */
+export function agreement(results: { label: Grade; grade?: Grade | undefined }[]): { agreed: number; total: number; rate: number; confusion: Record<string, number> } {
+  const confusion: Record<string, number> = {};
+  for (const r of results) {
+    const key = `${r.label} → ${r.grade ?? "error"}`;
+    confusion[key] = (confusion[key] ?? 0) + 1;
+  }
+  const agreed = results.filter((r) => r.grade === r.label).length;
+  return { agreed, total: results.length, rate: results.length === 0 ? 0 : agreed / results.length, confusion };
 }

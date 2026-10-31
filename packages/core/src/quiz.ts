@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { EngageError, type QuizKind } from "./engage.js";
+import { enqueueJob } from "./jobs.js";
 
 /** Days until an item comes back, by rung: right answers climb, wrong ones start over. */
 export const LADDER_DAYS = [1, 3, 7, 21] as const;
@@ -24,6 +25,7 @@ export interface QuizItem {
 
 export interface QuizResult {
   itemId: number;
+  answerId: number;
   /** Graded at once for predict items; why and what-if answers wait for the grader. */
   grade?: Grade;
   /** For predict items, the right choice, shown once answered. */
@@ -81,7 +83,7 @@ export function schedule(db: DatabaseSync, itemId: number, grade: Grade | undefi
 
 /**
  * Stores an answer with the confidence the developer gave before seeing any grade.
- * Predict items are graded against their answer key at once; the rest wait for the grader.
+ * Predict items are graded against their answer key at once; the rest queue a grade job.
  */
 export function answerQuiz(db: DatabaseSync, itemId: number, answer: string, confidence: number, now = new Date()): QuizResult {
   if (!Number.isInteger(confidence) || confidence < 1 || confidence > 5) throw new EngageError("confidence is a whole number from 1 to 5");
@@ -91,10 +93,14 @@ export function answerQuiz(db: DatabaseSync, itemId: number, answer: string, con
   const grade: Grade | undefined = row.kind === "predict" && row.answer !== null ? (answer === row.answer ? "correct" : "wrong") : undefined;
   db.exec("BEGIN");
   try {
-    db.prepare("INSERT INTO quiz_answers (item_id, at, answer, confidence, grade) VALUES (?, ?, ?, ?, ?)").run(itemId, now.toISOString(), answer.trim(), confidence, grade ?? null);
+    const answerId = Number(
+      db.prepare("INSERT INTO quiz_answers (item_id, at, answer, confidence, grade) VALUES (?, ?, ?, ?, ?)").run(itemId, now.toISOString(), answer.trim(), confidence, grade ?? null)
+        .lastInsertRowid,
+    );
     const nextDue = schedule(db, itemId, grade, now);
+    if (row.kind !== "predict") enqueueJob(db, "grade", { answerId }, now.toISOString());
     db.exec("COMMIT");
-    return { itemId, ...(grade ? { grade } : {}), ...(row.kind === "predict" && row.answer !== null ? { expected: row.answer } : {}), nextDue };
+    return { itemId, answerId, ...(grade ? { grade } : {}), ...(row.kind === "predict" && row.answer !== null ? { expected: row.answer } : {}), nextDue };
   } catch (err) {
     db.exec("ROLLBACK");
     throw err;

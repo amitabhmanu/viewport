@@ -1,4 +1,4 @@
-import type { AskQuery, ChangesSince, Decision, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { AskQuery, ChangesSince, Decision, GradedAnswer, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -60,6 +60,7 @@ export const api = {
   predict: (decisionId: string, guess?: string) => call<Prediction>("/api/predictions", { method: "POST", body: JSON.stringify({ decisionId, ...(guess !== undefined ? { guess } : {}) }) }),
   quiz: () => call<QuizItem[]>("/api/quiz"),
   answer: (itemId: number, answer: string, confidence: number) => call<QuizResult>("/api/quiz", { method: "POST", body: JSON.stringify({ itemId, answer, confidence }) }),
+  answers: () => call<GradedAnswer[]>("/api/answers"),
   jobs: () => call<Job[]>("/api/jobs"),
   pins: () => call<Pin[]>("/api/pins"),
   pin: (title: string, query: AskQuery) => call<Pin>("/api/pins", { method: "POST", body: JSON.stringify({ title, query }) }),

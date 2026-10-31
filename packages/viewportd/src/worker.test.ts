@@ -2,14 +2,17 @@ import { cp, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { enqueueJob, initWorkspace, openState, readModel, recentJobs, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { answerQuiz, claimJob, enqueueJob, finishJob, initWorkspace, openState, readModel, recentAnswers, recentJobs, viewportPaths, writeModelFromAgent, writeQuizItems } from "@viewport/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { type Worker, startWorker } from "./worker.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../fixtures/py-shop", import.meta.url));
 const FAKE = fileURLToPath(new URL("./fixtures/fake-claude.mjs", import.meta.url));
 const PLUGIN = fileURLToPath(new URL("../../../", import.meta.url));
-const EXPLAINER = [join(PLUGIN, "agents/viewport-explainer.md"), join(PLUGIN, "skills/viewport-explaining/SKILL.md")];
+const FILES = {
+  explainFiles: [join(PLUGIN, "agents/viewport-explainer.md"), join(PLUGIN, "skills/viewport-explaining/SKILL.md")],
+  gradeFiles: [join(PLUGIN, "agents/viewport-grader.md")],
+};
 
 async function workspace() {
   const root = await mkdtemp(join(tmpdir(), "viewport-worker-"));
@@ -52,7 +55,7 @@ describe("worker", () => {
     const db = openState(viewportPaths(root).stateDb);
     enqueueJob(db, "explain", { subjects: ["app.orders", "app"] });
     db.close();
-    worker = startWorker(root, { command: [process.execPath, FAKE], explainFiles: EXPLAINER });
+    worker = startWorker(root, { command: [process.execPath, FAKE], ...FILES });
     await expect.poll(() => jobs(root)[0]?.status, { timeout: 10_000 }).toBe("done");
 
     const model = await readModel(viewportPaths(root).model);
@@ -63,7 +66,7 @@ describe("worker", () => {
 
     const call = JSON.parse((await readFile(log, "utf8")).trim()) as { args: string[]; job: string };
     expect(call.job).toBe("1");
-    expect(call.args).toEqual(expect.arrayContaining(["-p", "--json-schema", "--allowed-tools", "Read,Grep,Glob"]));
+    expect(call.args).toEqual(expect.arrayContaining(["-p", "--json-schema", "--tools", "Read,Grep,Glob", "--allowed-tools", "Read,Grep,Glob"]));
     expect(call.args[call.args.indexOf("--append-system-prompt") + 1]).toContain("Explaining a system to its owner");
   });
 
@@ -74,8 +77,54 @@ describe("worker", () => {
     enqueueJob(db, "explain", { subjects: ["app.orders"] });
     enqueueJob(db, "nonsense", {});
     db.close();
-    worker = startWorker(root, { command: [process.execPath, FAKE], explainFiles: EXPLAINER });
+    worker = startWorker(root, { command: [process.execPath, FAKE], ...FILES });
     await expect.poll(() => jobs(root).map((j) => j.status), { timeout: 10_000 }).toEqual(["failed", "failed"]);
     expect(jobs(root).map((j) => j.error)).toEqual(["unknown job kind 'nonsense'", expect.stringContaining("exited with 2: boom")]);
+  });
+
+  it("grades written answers, takes a second look with the code for partial or wrong, and reschedules", async () => {
+    const root = await workspace();
+    const log = join(root, "claude.log");
+    process.env.FAKE_CLAUDE_LOG = log;
+    const db = openState(viewportPaths(root).stateDb);
+    const ids = writeQuizItems(db, [1, 2, 3].map((n) => ({ subject: "app.orders", kind: "why" as const, question: `Why ${n}?`, answer: "It needs the stock count." })));
+    const answered = new Date(Date.now() - 60_000);
+    answerQuiz(db, ids[0]!, "you're right, stock", 4, answered);
+    answerQuiz(db, ids[1]!, "in the code it waits for stock", 3, answered);
+    const left = answerQuiz(db, ids[2]!, "no idea", 1, answered);
+    // As if the daemon stopped before this one was graded: the worker queues it again at start.
+    finishJob(db, claimJob(db)!.id);
+    finishJob(db, claimJob(db)!.id);
+    finishJob(db, claimJob(db)!.id);
+    enqueueJob(db, "grade", { answerId: left.answerId - 2 });
+    enqueueJob(db, "grade", { answerId: left.answerId - 1 });
+    db.close();
+
+    worker = startWorker(root, { command: [process.execPath, FAKE], ...FILES });
+    const graded = () => {
+      const check = openState(viewportPaths(root).stateDb);
+      try {
+        return recentAnswers(check).map((a) => [a.question, a.grade, a.feedback]);
+      } finally {
+        check.close();
+      }
+    };
+    await expect.poll(graded, { timeout: 10_000 }).toEqual([
+      ["Why 3?", "wrong", "Second look: wrong."],
+      ["Why 2?", "correct", "Second look: correct."],
+      ["Why 1?", "correct", "First look: correct."],
+    ]);
+    const check = openState(viewportPaths(root).stateDb);
+    const steps = check.prepare("SELECT step FROM quiz_items ORDER BY id").all().map((r) => (r as { step: number }).step);
+    expect(steps).toEqual([1, 1, 0]);
+    expect(recentAnswers(check)[0]?.expected).toBe("It needs the stock count.");
+    check.close();
+
+    const calls = (await readFile(log, "utf8")).trim().split("\n").map((l) => JSON.parse(l) as { args: string[] });
+    expect(calls).toHaveLength(5);
+    const tools = calls.map((c) => c.args[c.args.indexOf("--tools") + 1]);
+    expect(tools.filter((t) => t === "")).toHaveLength(3);
+    expect(tools.filter((t) => t === "Read,Grep,Glob")).toHaveLength(2);
+    expect(calls[0]!.args[calls[0]!.args.indexOf("--append-system-prompt") + 1]).toContain("Grading an explain-back answer");
   });
 });
