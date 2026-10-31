@@ -161,7 +161,7 @@ export async function runClaude(root: string, options: ClaudeOptions, prompt: st
     "--append-system-prompt",
     system,
   ];
-  const child = spawn(cmd!, args, { cwd: root, env: { ...process.env, VIEWPORT_JOB: "1" }, stdio: ["pipe", "pipe", "pipe"] });
+  const child = spawn(cmd!, args, { cwd: root, env: { ...process.env, VIEWPORT_JOB: "1" }, stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
   const out: Buffer[] = [];
   const err: Buffer[] = [];
   child.stdout.on("data", (b: Buffer) => out.push(b));
@@ -172,9 +172,14 @@ export async function runClaude(root: string, options: ClaudeOptions, prompt: st
       child.kill("SIGTERM");
       reject(new Error(`timed out after ${Math.round((options.timeoutMs ?? 300_000) / 1000)}s`));
     }, options.timeoutMs ?? 300_000);
-    child.on("error", (e) => {
+    child.on("error", (e: NodeJS.ErrnoException) => {
       clearTimeout(timer);
-      reject(e);
+      // Without a shell, Windows finds claude.exe (the native installer) but not npm's claude.cmd.
+      reject(
+        e.code === "ENOENT"
+          ? new Error(`could not run '${cmd}': install Claude Code's native build, or set VIEWPORT_CLAUDE to the claude executable`)
+          : e,
+      );
     });
     child.on("close", (c) => {
       clearTimeout(timer);

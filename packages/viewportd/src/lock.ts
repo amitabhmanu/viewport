@@ -83,6 +83,7 @@ export function spawnDaemon(root: string, script: string): void {
   const child = spawn(process.execPath, ["--disable-warning=ExperimentalWarning", script, "serve", "--root", root], {
     detached: true,
     stdio: "ignore",
+    windowsHide: true,
   });
   child.unref();
 }
@@ -95,5 +96,9 @@ export async function stopDaemon(root: string): Promise<boolean> {
     return false;
   }
   process.kill(lock.pid, "SIGTERM");
+  // On Windows a signal ends the process outright, so its own shutdown never
+  // releases the lock: wait for it to go, then release the lock on its behalf.
+  for (let i = 0; i < 40 && alive(lock.pid); i++) await new Promise((r) => setTimeout(r, 50));
+  await releaseLock(root, lock.pid);
   return true;
 }

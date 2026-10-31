@@ -3,7 +3,7 @@
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename } from "node:path";
-import { URL } from "node:url";
+import { URL, fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const out = new URL("../../hooks/dist/", import.meta.url);
@@ -13,7 +13,8 @@ await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });
 await build({
   entryPoints: Object.fromEntries(entries.map((e) => [e, `src/${e}.ts`])),
-  outdir: out.pathname,
+  // fileURLToPath, not URL.pathname, which gives "/C:/..." on Windows.
+  outdir: fileURLToPath(out),
   outExtension: { ".js": ".mjs" },
   bundle: true,
   platform: "node",
