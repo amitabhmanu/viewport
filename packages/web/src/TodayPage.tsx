@@ -1,5 +1,5 @@
 import type { Change, Decision, Digest, DigestDecision, Job, Model, ViewEdgeKind } from "@viewport/core";
-import type { MouseEvent } from "react";
+import { type MouseEvent, useState } from "react";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Calibration } from "./Calibration.js";
@@ -53,12 +53,11 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   return (
     <section className="page narrow">
       <h1>Today</h1>
-      {digest.data && <DigestCard digest={digest.data} link={link} />}
       <div className="tiles">
         {tiles.map(([label, n, href]) => (
           <a
             key={label}
-            className="tile"
+            className={`tile${n === 0 ? " zero" : ""}`}
             href={href}
             onClick={(e) => {
               e.preventDefault();
@@ -70,6 +69,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
           </a>
         ))}
       </div>
+      {digest.data && <DigestCard digest={digest.data} link={link} />}
       {(quiz.data ?? []).length > 0 && (
         <>
           <div className="section-head">
@@ -252,9 +252,12 @@ function ChangeItem({ c, model, changes, go }: { c: Change; model: Model; change
   );
 }
 
-/** At most three new decisions to guess at, the most salient first. */
+/** New decisions to guess at, the most salient first: one open at a time, two more waiting below it. */
 function PredictCards({ queue, go }: { queue: Decision[]; go: (to: string) => void }) {
+  const [openId, setOpenId] = useState<string>();
   if (queue.length === 0) return null;
+  const current = queue.find((d) => d.id === openId) ?? queue[0]!;
+  const waiting = queue.slice(0, 3).filter((d) => d !== current);
   return (
     <>
       <div className="section-head">
@@ -272,13 +275,19 @@ function PredictCards({ queue, go }: { queue: Decision[]; go: (to: string) => vo
         )}
       </div>
       <ul className="predict-cards">
-        {queue.slice(0, 3).map((d) => (
-          <li key={d.id} className="decision" data-decision={d.id}>
-            <div className="decision-head">
-              <span className="id">{d.id}</span>
-              <h2>{d.title}</h2>
-            </div>
-            <PredictPrompt d={d} />
+        <li key={current.id} className="decision" data-decision={current.id}>
+          <div className="decision-head">
+            <span className="id">{current.id}</span>
+            <h2>{current.title}</h2>
+          </div>
+          <PredictPrompt d={current} />
+        </li>
+        {waiting.map((d) => (
+          <li key={d.id} className="predict-row">
+            <button className="link" onClick={() => setOpenId(d.id)}>
+              <span className="id">{d.id}</span> {d.title}
+            </button>
+            <span className="muted"> · guess this next</span>
           </li>
         ))}
       </ul>
