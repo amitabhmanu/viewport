@@ -1,7 +1,7 @@
 import type { AskQuery, Change, Comparison, Decision, ImpactResult, Model, ModelNode, Subgraph } from "@viewport/core";
 import { type ReactElement, useMemo, useRef, useState } from "react";
 import { api } from "./api.js";
-import { ASK_KINDS, CHANGEABLE, EFFECT_LABEL, FAILABLE, SLICES, askHref, askSubject, askTitle, askView, followUp, impactLines, parseAsk } from "./ask.js";
+import { ASK_KINDS, CHANGEABLE, EFFECT_LABEL, FAILABLE, SLICES, askHref, askSubject, askTitle, askView, compareGroups, followUp, impactLines, parseAsk } from "./ask.js";
 import { useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
 import { CHANGE_LABEL, homeView, shuffledOptions } from "./labels.js";
@@ -128,7 +128,7 @@ export function AskPage({ params, go }: { params: URLSearchParams; go: (to: stri
                 </>
               ))}
             {answer.kind === "impact" && <ImpactAnswer result={answer.data} nodes={nodes} draw={draw} />}
-            {answer.kind === "compare" && <CompareAnswer result={answer.data} draw={draw} />}
+            {answer.kind === "compare" && <CompareAnswer result={answer.data} nodes={nodes} draw={draw} />}
             {answer.kind === "options" && query.q === "options" && (
               <OptionsAnswer decision={(ledger.data ?? []).find((d) => d.id === query.decision)} guessed={(predictions.data ?? []).some((p) => p.decisionId === query.decision)} draw={draw} />
             )}
@@ -174,18 +174,25 @@ function ImpactAnswer({ result, nodes, draw }: { result: ImpactResult; nodes: Ma
   );
 }
 
-function CompareAnswer({ result, draw }: { result: Comparison; draw: Draw }) {
+function CompareAnswer({ result, nodes, draw }: { result: Comparison; nodes: Map<string, ModelNode>; draw: Draw }) {
   if (result.changes.length === 0) return <p className="muted">The two revisions describe the same system.</p>;
   const changed = new Map(result.changes.map((c) => [c.subject, c]));
   return (
     <>
-      <ul className="changes">
-        {result.changes.map((c) => (
-          <li key={c.subject}>
-            <span className={`tag ${c.change}`}>{CHANGE_LABEL[c.change]}</span> {c.label} <span className="muted">({c.what === "edge" ? c.subject.slice(0, c.subject.indexOf(":")) : c.what})</span>
-          </li>
-        ))}
-      </ul>
+      {compareGroups(result.changes, nodes).map((g) => (
+        <div key={g.title}>
+          <h3>
+            {g.title} ({g.items.length})
+          </h3>
+          <ul className="changes">
+            {g.items.map(({ change: c, what }) => (
+              <li key={c.subject}>
+                <span className={`tag ${c.change}`}>{CHANGE_LABEL[c.change]}</span> {c.label} <span className="muted">({what})</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
       {result.nodes.length > 0 && draw({ nodes: result.nodes, edges: result.edges }, undefined, changed)}
     </>
   );

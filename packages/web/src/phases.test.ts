@@ -1,6 +1,6 @@
 import type { Model } from "@viewport/core";
 import { describe, expect, it } from "vitest";
-import { PHASES, boxNotes, homeView, phaseOf, phaseStart, trail, viewTitle, zoomTarget } from "./labels.js";
+import { PHASES, arrowText, boxNotes, homeView, phaseOf, phaseStart, trail, viewTitle, zoomTarget } from "./labels.js";
 
 const meta = { source: "agent", sync: "unverified" } as const;
 const model = {
@@ -21,6 +21,16 @@ const model = {
   ],
 } as Model;
 const nodes = new Map(model.nodes.map((n) => [n.id, n]));
+
+describe("arrow text", () => {
+  it("names what a part does with data, and keeps a branch's condition", () => {
+    expect(arrowText("owns", undefined)).toBe("owns");
+    expect(arrowText("reads", undefined)).toBe("reads");
+    expect(arrowText("writes", undefined)).toBe("writes");
+    expect(arrowText("next", "the order had shipped")).toBe("the order had shipped");
+    expect(arrowText("depends_on", undefined)).toBeUndefined();
+  });
+});
 
 describe("phases", () => {
   it("files every view under one phase", () => {

@@ -121,6 +121,13 @@ export const EDGE_LABEL: Record<ViewEdgeKind, { out: string; in: string; noun: s
   runs_on: { out: "Runs on", in: "Runs", noun: "Runs on" },
 };
 
+const WRITTEN_ON_ARROW = new Set<ViewEdgeKind>(["owns", "reads", "writes"]);
+
+/** Text on an arrow: a branch's condition, or what a part does with data, which the line's style alone can't say. */
+export function arrowText(kind: ViewEdgeKind, label: string | undefined): string | undefined {
+  return label ?? (WRITTEN_ON_ARROW.has(kind) ? EDGE_LABEL[kind].out.toLowerCase() : undefined);
+}
+
 /**
  * Short notes drawn on boxes: personal or secret data, assumptions still to confirm,
  * and steps and processes no test covers.

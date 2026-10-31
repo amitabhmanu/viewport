@@ -1,6 +1,6 @@
-import type { Decision, Model, ModelEdge, ModelNode, Prediction } from "@viewport/core";
+import type { Change, Decision, Model, ModelEdge, ModelNode, Prediction } from "@viewport/core";
 import { describe, expect, it } from "vitest";
-import { askHref, askSubject, askTitle, askView, followUp, impactLines, parseAsk } from "./ask.js";
+import { askHref, askSubject, askTitle, askView, compareGroups, followUp, impactLines, parseAsk } from "./ask.js";
 
 const meta = { source: "agent", sync: "unverified" } as const;
 const model = {
@@ -61,6 +61,29 @@ describe("what-if and compare questions", () => {
       "Processes affected: Ordering.",
       "People affected: Customer.",
     ]);
+  });
+
+  it("keeps steps apart from processes", () => {
+    const withStep = new Map(nodes).set("place", { ...meta, kind: "step", id: "place", name: "Place order", does: "Save it" });
+    expect(impactLines({ ordering: "affected", place: "affected" }, withStep)).toEqual(["Processes affected: Ordering.", "Steps affected: Place order."]);
+  });
+
+  it("splits a comparison into parts and connections, in plain words, added first", () => {
+    const change = (subject: string, what: Change["what"], kind: Change["change"], label: string): Change => ({ subject, what, change: kind, label, nodes: [] });
+    const groups = compareGroups(
+      [
+        change("refunds", "node", "changed", "Refund rule"),
+        change("gone", "node", "removed", "Gone"),
+        change("depends_on:app.orders->app.payments", "edge", "added", "Orders → Payments"),
+        change("ordering", "node", "added", "Ordering"),
+      ],
+      nodes,
+    );
+    expect(groups.map((g) => [g.title, g.items.map((i) => `${i.change.label} (${i.what})`)])).toEqual([
+      ["Parts", ["Ordering (process)", "Refund rule (business rule)", "Gone (part)"]],
+      ["Connections", ["Orders → Payments (dependency)"]],
+    ]);
+    expect(compareGroups([change("ordering", "node", "added", "Ordering")], nodes).map((g) => g.title)).toEqual(["Parts"]);
   });
 
   it("ends with a decision to guess, else a what-if, on the most salient part", () => {

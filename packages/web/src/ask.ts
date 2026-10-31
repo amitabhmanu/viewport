@@ -1,4 +1,5 @@
-import type { AskQuery, Decision, Effect, Model, ModelEdge, ModelNode, Prediction, SplitView, Subgraph, ViewEdgeKind } from "@viewport/core";
+import type { AskQuery, Change, Decision, Effect, Model, ModelEdge, ModelNode, Prediction, SplitView, Subgraph, ViewEdgeKind } from "@viewport/core";
+import { EDGE_LABEL, KIND_LABEL } from "./labels.js";
 
 /** Slices offered in the Ask form, as [label, query]. */
 export const SLICES: [string, AskQuery][] = [
@@ -157,10 +158,34 @@ export function impactLines(effect: Record<string, Effect>, nodes: Map<string, M
     ["Keeps working, but degraded", names((_, e) => e === "degraded")],
     ["Code to change", names((_, e) => e === "touch")],
     ["Tests to run again", names((_, e) => e === "retest")],
-    ["Processes affected", names((id, e) => e === "affected" && kindIs(id, "process", "step"))],
+    ["Processes affected", names((id, e) => e === "affected" && kindIs(id, "process"))],
+    ["Steps affected", names((id, e) => e === "affected" && kindIs(id, "step"))],
     ["People affected", names((id, e) => e === "affected" && kindIs(id, "actor"))],
   ];
   return lines.filter(([, list]) => list.length > 0).map(([label, list]) => `${label}: ${list.join(", ")}.`);
+}
+
+const CHANGE_ORDER: Record<Change["change"], number> = { added: 0, changed: 1, removed: 2 };
+
+export interface CompareItem {
+  change: Change;
+  /** What the thing is, in plain words: "assumption", "dependency". */
+  what: string;
+}
+
+/** A comparison's changes split into parts and connections, added first, then by name. */
+export function compareGroups(changes: Change[], nodes: Map<string, ModelNode>): { title: string; items: CompareItem[] }[] {
+  const items = (what: Change["what"], describe: (c: Change) => string): CompareItem[] =>
+    changes
+      .filter((c) => c.what === what)
+      .sort((a, b) => CHANGE_ORDER[a.change] - CHANGE_ORDER[b.change] || a.label.localeCompare(b.label))
+      .map((change) => ({ change, what: describe(change).toLowerCase() }));
+  const groups = [
+    // A part removed since the revision is no longer in the model to name its kind.
+    { title: "Parts", items: items("node", (c) => (nodes.has(c.subject) ? KIND_LABEL[nodes.get(c.subject)!.kind] : "Part")) },
+    { title: "Connections", items: items("edge", (c) => EDGE_LABEL[c.subject.slice(0, c.subject.indexOf(":")) as ViewEdgeKind].noun) },
+  ];
+  return groups.filter((g) => g.items.length > 0);
 }
 
 export interface FollowUp {
