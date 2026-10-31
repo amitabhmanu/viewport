@@ -9,6 +9,7 @@ export function subtitle(node: ModelNode, level: Level): string {
     : "does" in node ? node.does
     : "statement" in node ? node.statement
     : "description" in node ? node.description
+    : node.kind === "test" ? (node.paths.length === 1 ? node.paths[0]! : `${node.paths.length} sets of test files`)
     : "";
   const tech = "tech" in node && node.tech ? node.tech : "protocol" in node && node.protocol ? node.protocol : undefined;
   if (level === "simple" || tech === undefined) return role;

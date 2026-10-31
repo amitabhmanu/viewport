@@ -12,6 +12,11 @@
   --chart: #2f5fd0;
   --debt-high: #fbdcc6;
   --debt-some: #fdf0e5;
+  --k-flow: #6d4fc2;
+  --k-rule: #9a6700;
+  --k-data: #0f766e;
+  --k-test: #2f7d3a;
+  --k-runtime: #4b5563;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -29,6 +34,11 @@
     --chart: #5f88e8;
     --debt-high: #5a3218;
     --debt-some: #3a2a1e;
+    --k-flow: #b4a1f0;
+    --k-rule: #e0b84f;
+    --k-data: #5fc8bb;
+    --k-test: #7fcf8a;
+    --k-runtime: #a5adba;
     color-scheme: dark;
   }
 }
@@ -110,7 +120,7 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .edge.data { stroke-dasharray: 2 3; }
 .edge.uses { stroke-dasharray: 1 0; opacity: .8; }
 .edge.lit { stroke: var(--accent); stroke-width: 2.5; }
-.arrowhead { fill: var(--edge); }
+.arrowhead { fill: var(--edge); fill: context-stroke; }
 .arrowhead.accent { fill: var(--accent); }
 .node { cursor: pointer; outline: none; }
 .node rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
@@ -151,19 +161,35 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .phases button:disabled { opacity: .45; cursor: default; }
 .phases button:disabled:hover { border-color: transparent; }
 .phases .more { margin-left: 8px; border-left: 1px solid var(--line); border-radius: 0; padding-left: 12px; }
-.node.process rect { stroke: var(--ink); }
-.node.step rect { rx: 18px; }
-.node.rule rect { fill: var(--bg); stroke: var(--ink); stroke-dasharray: 1 0; }
-.node.assumption rect { fill: var(--bg); stroke: var(--stale); stroke-dasharray: 5 3; }
-.node.entity rect { fill: var(--bg); }
-.node.test rect { stroke-dasharray: 2 2; }
-.node.runtime rect { stroke: var(--ink); stroke-width: 2; }
+/* Each family of v2 kinds has its own colour on the outline and the kind label, and its own line. */
+.node.family-flow { --k: var(--k-flow); }
+.node.family-rule { --k: var(--k-rule); }
+.node.family-assumption { --k: var(--stale); }
+.node.family-data { --k: var(--k-data); }
+.node.family-test { --k: var(--k-test); }
+.node.family-runtime { --k: var(--k-runtime); }
+.node.process rect { stroke: var(--k); stroke-width: 2; }
+.node.step rect { stroke: var(--k); }
+.node.rule rect { fill: var(--bg); stroke: var(--k); stroke-width: 1.5; }
+.node.assumption rect { fill: var(--bg); stroke: var(--k); stroke-dasharray: 5 3; }
+.node.entity rect { fill: var(--bg); stroke: var(--k); }
+.node.test rect { stroke: var(--k); stroke-dasharray: 2 2; }
+.node.runtime rect { stroke: var(--k); stroke-width: 2; }
+.node .kind-label { fill: var(--k, var(--muted)); font-size: 10px; font-weight: 600; letter-spacing: .06em; }
 .node .note { fill: var(--muted); font-size: 11px; font-weight: 600; }
 .node .note.gap, .node.assumption .note { fill: var(--stale); }
-.edge.next:not(.lit, .fresh) { stroke: var(--ink); }
-.edge.constrained_by, .edge.assumes { stroke-dasharray: 2 3; }
+.edge.next:not(.lit, .fresh) { stroke: var(--k-flow); stroke-width: 2; }
+.edge.constrained_by:not(.lit, .fresh) { stroke: var(--k-rule); }
+.edge.assumes:not(.lit, .fresh) { stroke: var(--stale); }
+.edge.covers:not(.lit, .fresh) { stroke: var(--k-test); }
+.edge.constrained_by { stroke-dasharray: 2 3; }
+.edge.assumes { stroke-dasharray: 5 3; }
 .edge.reads { stroke-dasharray: 6 4; }
 .edge.covers { stroke-dasharray: 1 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 12px; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend .node { cursor: default; }
+.legend .node rect { stroke-width: 1.5; }
 .edge-label { fill: var(--muted); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
 
 /* What-if, comparisons and pins (Phase 9). */

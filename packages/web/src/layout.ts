@@ -26,7 +26,8 @@ export interface Layout {
   routes: Route[];
 }
 
-export const NODE = { width: 200, height: 72, stubWidth: 160, stubHeight: 44 } as const;
+/** Box sizes: room for a name, two lines of description and a note. */
+export const NODE = { width: 200, height: 84, stubWidth: 160, stubHeight: 44 } as const;
 
 const elk = new ELK();
 

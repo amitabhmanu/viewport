@@ -1,5 +1,6 @@
 import type { Change, DebtBand, Level, ModelNode, SplitView } from "@viewport/core";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { KIND_FAMILY, KIND_SHORT, arrowKeys, fit, fontFamily, kindsIn, measure, wrap } from "./boxes.js";
 import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, arrowText, subtitle } from "./labels.js";
 import { type Layout, layout, syncMarker } from "./layout.js";
 
@@ -34,10 +35,16 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
       live = false;
     };
   }, [part]);
+  const family = useMemo(fontFamily, []);
+  // Name each box's kind only where kinds mix; a view of components alone needs no "Component" on every box.
+  const mixed = kindsIn(part, nodes).length > 1;
+  // Arrow text can reach past the last box; widen the drawing so it is not cut off.
+  const labels = useMemo(() => (laid ? laid.routes.flatMap((r) => (arrowText(r.kind, r.label) && r.points.length > 1 ? [placeLabel(arrowText(r.kind, r.label)!, r.points, family)] : [])) : []), [laid, family]);
 
   if (laid === undefined) return <div className="diagram-loading">Laying out…</div>;
+  const width = Math.max(laid.width, ...labels.map((l) => l.right + 8));
   return (
-    <svg className="diagram" viewBox={`0 0 ${laid.width} ${laid.height}`} width={laid.width} height={laid.height} role="img" aria-label={part.title}>
+    <svg className="diagram" viewBox={`0 0 ${width} ${laid.height}`} width={width} height={laid.height} role="img" aria-label={part.title}>
       <defs>
         {/* Sized in the diagram's own units, so a thicker line keeps the same head. */}
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="10.5" orient="auto-start-reverse">
@@ -83,7 +90,8 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         const change = b.stub ? undefined : changed.get(b.id);
         const band = b.stub ? undefined : debt?.get(b.id);
         const note = b.stub ? undefined : (notes?.get(b.id) ?? (band === "high" ? "Least known" : undefined));
-        const cls = ["node", node?.kind ?? "unknown", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? "", change ? "fresh" : "", band ? `debt-${band}` : ""].filter(Boolean).join(" ");
+        const kind = node?.kind;
+        const cls = ["node", kind ?? "unknown", kind ? `family-${KIND_FAMILY[kind]}` : "", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? "", change ? "fresh" : "", band ? `debt-${band}` : ""].filter(Boolean).join(" ");
         return (
           <g
             key={b.id}
@@ -102,21 +110,45 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
               else onSelect(b.id);
             }}
           >
-            <rect width={b.width} height={b.height} rx={node?.kind === "actor" ? b.height / 2 : 8} />
-            <text x={12} y={b.stub ? 18 : 24} className="name">
-              {clip(name, b.stub ? 20 : 24)}
-            </text>
-            {b.stub ? (
-              <text x={12} y={34} className="sub">
-                {target ? `→ continues in part ${target.split("#")[1]}` : "→ elsewhere"}
-              </text>
-            ) : (
-              node && (
-                <text x={12} y={46} className="sub">
-                  {clip(subtitle(node, level), 30)}
-                </text>
-              )
-            )}
+            <rect width={b.width} height={b.height} rx={kind === "actor" ? b.height / 2 : kind === "step" ? 18 : 8} />
+            {(() => {
+              if (b.stub) {
+                return (
+                  <>
+                    <text x={12} y={18} className="name">
+                      {fit(name, b.width - 24, `500 14px ${family}`)}
+                    </text>
+                    <text x={12} y={34} className="sub">
+                      {target ? `→ continues in part ${target.split("#")[1]}` : "→ elsewhere"}
+                    </text>
+                  </>
+                );
+              }
+              // The kind sits bottom right, out of the name's way, unless a change badge holds that corner.
+              const label = mixed && kind ? KIND_SHORT[kind].toUpperCase() : undefined;
+              const labelTop = label !== undefined && change !== undefined;
+              const labelEnd = b.width - (labelTop && marker ? 26 : 12);
+              const labelWidth = labelTop ? measure(label, `600 10px ${family}`) + label.length * 0.6 : 0;
+              const nameRoom = (labelTop ? labelEnd - labelWidth - 8 : marker ? b.width - 30 : b.width - 12) - 12;
+              return (
+                <>
+                  {label && (
+                    <text x={labelEnd} y={labelTop ? 23 : b.height - 10} className="kind-label" textAnchor="end">
+                      {label}
+                    </text>
+                  )}
+                  <text x={12} y={24} className="name">
+                    {fit(name, nameRoom, `600 14px ${family}`)}
+                  </text>
+                  {node &&
+                    wrap(subtitle(node, level), b.width - 24, 2, `12px ${family}`).map((line, i) => (
+                      <text key={i} x={12} y={43 + i * 14} className="sub">
+                        {line}
+                      </text>
+                    ))}
+                </>
+              );
+            })()}
             {change && (
               <text x={b.width - 12} y={b.height - 10} className="badge" textAnchor="end">
                 {CHANGE_LABEL[change.change]}
@@ -137,11 +169,41 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         );
       })}
       {/* Last, so no line or box covers the text. */}
-      {laid.routes.map((r) => {
-        const text = arrowText(r.kind, r.label);
-        return text && r.points.length > 1 ? <EdgeLabel key={r.id} text={text} points={r.points} /> : null;
-      })}
+      {labels.map((l, i) => (
+        <text key={i} className="edge-label" x={l.x} y={l.y} textAnchor={l.anchor} dominantBaseline="middle">
+          {l.text}
+        </text>
+      ))}
     </svg>
+  );
+}
+
+/** What the boxes and lines of a part mean, for the kinds this part draws. */
+export function Legend({ part, nodes, modes }: { part: SplitView; nodes: Map<string, ModelNode>; modes: Map<string, string> }) {
+  const kinds = kindsIn(part, nodes);
+  const arrows = arrowKeys(part, (sources) => liftedMode(sources, modes));
+  if (kinds.length < 2 && arrows.length < 2) return null;
+  return (
+    <ul className="legend" aria-label="Key">
+      {kinds.map((k) => (
+        <li key={k}>
+          <svg width={22} height={14} aria-hidden="true">
+            <g className={`node ${k} family-${KIND_FAMILY[k]}`}>
+              <rect x={1} y={1} width={20} height={12} rx={k === "actor" || k === "step" ? 6 : 3} />
+            </g>
+          </svg>
+          {KIND_LABEL[k]}
+        </li>
+      ))}
+      {arrows.map((a) => (
+        <li key={a.className}>
+          <svg width={26} height={14} aria-hidden="true">
+            <line className={a.className} x1={1} y1={7} x2={25} y2={7} />
+          </svg>
+          {a.label}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -151,7 +213,7 @@ function markerTitle(kind: ModelNode["kind"] | undefined, marker: "stale" | "unv
 }
 
 /** Text on an arrow, beside its longest segment if that runs down, below it if across. */
-function EdgeLabel({ text, points }: { text: string; points: { x: number; y: number }[] }) {
+function placeLabel(full: string, points: { x: number; y: number }[], family: string) {
   let best = 0;
   let at = { x: points[0]!.x, y: points[0]!.y };
   let across = false;
@@ -165,19 +227,14 @@ function EdgeLabel({ text, points }: { text: string; points: { x: number; y: num
       across = a.y === b.y;
     }
   }
-  return (
-    <text className="edge-label" x={across ? at.x : at.x + 6} y={across ? at.y + 9 : at.y} textAnchor={across ? "middle" : "start"} dominantBaseline="middle">
-      {clip(text, 28)}
-    </text>
-  );
+  const text = fit(full, 180, `11px ${family}`);
+  const w = measure(text, `11px ${family}`);
+  const x = across ? at.x : at.x + 6;
+  return { text, x, y: across ? at.y + 9 : at.y, anchor: across ? ("middle" as const) : ("start" as const), right: across ? x + w / 2 : x + w };
 }
 
 /** A view edge takes a mode only when every model edge behind it shares it. */
 function liftedMode(sources: string[], modes: Map<string, string>): string | undefined {
   const found = new Set(sources.map((s) => modes.get(s)));
   return found.size === 1 ? [...found][0] : undefined;
-}
-
-function clip(text: string, max: number): string {
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 }
