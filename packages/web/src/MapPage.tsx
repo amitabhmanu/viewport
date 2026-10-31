@@ -1,5 +1,5 @@
 import type { Change, Level, Model, ModelEdge, ModelNode, ViewEdge, ViewEdgeKind } from "@viewport/core";
-import { type MouseEvent, useMemo } from "react";
+import { type MouseEvent, useMemo, useState } from "react";
 import { api } from "./api.js";
 import { CHANGEABLE, FAILABLE, askHref, askSubject } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
@@ -15,14 +15,21 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
   const live = useLive();
   const view = params.get("view") ?? "overview";
   const levelParam = params.get("level");
-  const level: Level = LEVELS.includes(levelParam as Level) ? (levelParam as Level) : "medium";
+  const asked = LEVELS.includes(levelParam as Level) ? (levelParam as Level) : undefined;
   const focus = params.get("focus") ?? undefined;
   const partParam = params.get("part");
   const edgeParam = params.get("edge") ?? undefined;
+  const overlay = params.get("overlay") === "debt" ? "debt" : undefined;
 
   const model = useLoad(api.model, [live.model]);
-  const parts = useLoad(() => api.view(view, level), [view, level, live.model]);
+  // A level in the link wins, then the one just picked (its save may still be on the way), then the one remembered for this view.
+  const [picked, setPicked] = useState<Record<string, Level>>({});
+  const area = useLoad(() => api.level(view, asked), [view, asked, live.model, live.state]);
+  const areaHere = area.data?.view === view ? area.data : undefined;
+  const level: Level | undefined = asked ?? picked[view] ?? areaHere?.level ?? (area.error ? "medium" : undefined);
+  const parts = useLoad(async () => (level ? api.view(view, level) : undefined), [view, level, live.model]);
   const pins = useLoad(api.pins, [live.state]);
+  const debt = useLoad(api.debt, [live.model, live.state]);
 
   const nodes = useMemo(() => new Map((model.data?.nodes ?? []).map((n) => [n.id, n])), [model.data]);
   const modes = useMemo(
@@ -31,6 +38,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
   );
 
   const notes = useMemo(() => (model.data ? boxNotes(model.data) : new Map<string, string>()), [model.data]);
+  const debtBands = useMemo(() => new Map([...(debt.data?.items ?? []), ...(debt.data?.containers ?? [])].flatMap((i) => (i.band ? [[i.id, i.band] as const] : []))), [debt.data]);
 
   const { changes, bySubject } = useChanges();
   // A container whose components changed shows as changed too, so the reader knows where to look.
@@ -46,7 +54,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
 
   if (model.error) return <p className="error page">{model.error}</p>;
   if (!model.data) return <p className="muted page">Loading…</p>;
-  const phases = <PhaseBar view={view} model={model.data} go={(v) => go(mapHref(v, { level }))} />;
+  const phases = <PhaseBar view={view} model={model.data} go={(v) => go(mapHref(v, { overlay }))} />;
   if (parts.error) {
     return (
       <section className="map">
@@ -55,7 +63,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
       </section>
     );
   }
-  if (!parts.data) return <p className="muted page">Loading…</p>;
+  if (!parts.data || !level) return <p className="muted page">Loading…</p>;
   if (parts.data.length === 0) return <p className="muted page">Nothing to show in this view yet.</p>;
 
   // A part in the URL wins; otherwise show the part holding the focused element, so a level switch keeps it in sight.
@@ -63,8 +71,20 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
   const index = Math.min(Math.max(Number.isFinite(requested) ? requested : 0, 0), parts.data.length - 1);
   const part = parts.data[index]!;
   // Any navigation drops a selected arrow unless it says otherwise; arrows belong to one view.
-  const href = (to: { view?: string; level?: Level; focus?: string | undefined; part?: number | undefined; edge?: string | undefined }) =>
-    mapHref(to.view ?? view, { level: to.level ?? level, focus: "focus" in to ? to.focus : focus, part: "part" in to ? to.part : index + 1, edge: to.edge });
+  // Another view shows at its own remembered level, so a level only carries within this one.
+  const href = (to: { view?: string; level?: Level; focus?: string | undefined; part?: number | undefined; edge?: string | undefined; overlay?: string | undefined }) =>
+    mapHref(to.view ?? view, {
+      level: to.level ?? (to.view === undefined || to.view === view ? asked : undefined),
+      focus: "focus" in to ? to.focus : focus,
+      part: "part" in to ? to.part : index + 1,
+      edge: to.edge,
+      overlay: "overlay" in to ? to.overlay : overlay,
+    });
+  const chooseLevel = (l: Level) => {
+    setPicked((p) => ({ ...p, [view]: l }));
+    void api.setLevel(view, l);
+    go(href({ level: l, part: undefined }));
+  };
   const viewEdge = edgeParam === undefined ? undefined : part.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === edgeParam);
   // A pinned question about a part shown here, or about the part this view looks inside, becomes one of this area's views.
   const shown = new Set([...part.elements, viewSubject(view)]);
@@ -112,14 +132,30 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             ),
           )}
         </nav>
-        <div className="levels" role="radiogroup" aria-label="Detail">
-          {LEVELS.map((l) => (
-            <button key={l} role="radio" aria-checked={l === level} onClick={() => go(href({ level: l, part: undefined }))}>
-              {l[0]!.toUpperCase() + l.slice(1)}
-            </button>
-          ))}
+        <div className="map-tools">
+          <button aria-pressed={overlay === "debt"} title="Shade the parts with the widest reach that you have shown the least of" onClick={() => go(href({ overlay: overlay ? undefined : "debt" }))}>
+            What I know least
+          </button>
+          <div className="levels" role="radiogroup" aria-label="Detail">
+            {LEVELS.map((l) => (
+              <button key={l} role="radio" aria-checked={l === level} onClick={() => chooseLevel(l)}>
+                {levelName(l)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+      {areaHere?.suggestion && areaHere.suggestion.to !== level && (
+        <p className="suggestion">
+          <span>
+            You got {areaHere.suggestion.right} of {areaHere.suggestion.answers} questions about this right. Try {levelName(areaHere.suggestion.to)} here?
+          </span>
+          <button onClick={() => chooseLevel(areaHere.suggestion!.to)}>Try {levelName(areaHere.suggestion.to)}</button>
+          <button className="link" onClick={() => void api.dismissLevel(view)}>
+            Not now
+          </button>
+        </p>
+      )}
       {pinnedHere.length > 0 && (
         <p className="pinned-here">
           Pinned here:{" "}
@@ -162,7 +198,9 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             onSelectEdge={(key) => go(href({ focus: undefined, edge: key === edgeParam ? undefined : key }))}
             selectedEdge={edgeParam}
             notes={notes}
+            debt={overlay ? debtBands : undefined}
           />
+          {overlay && part.elements.some((id) => debtBands.has(id)) && <p className="muted">Darker means a wider reach and less shown so far. Answering questions and guessing decisions lightens it.</p>}
           {parts.data.length > 1 && (
             <div className="parts" aria-label="Parts of this view">
               {parts.data.map((p, i) => (
@@ -185,6 +223,8 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
     </section>
   );
 }
+
+const levelName = (l: Level) => l[0]!.toUpperCase() + l.slice(1);
 
 /** The node a view looks inside, whose takeaway heads the view. */
 function viewSubject(view: string): string {

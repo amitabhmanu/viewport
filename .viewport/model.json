@@ -190,6 +190,20 @@
       "to": "web.parts"
     },
     {
+      "from": "core.learn",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-015"
+    },
+    {
+      "from": "core.learn",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-016"
+    },
+    {
       "from": "core.model",
       "kind": "decided_by",
       "source": "agent",
@@ -267,6 +281,13 @@
       "to": "d-001"
     },
     {
+      "from": "hooks.events",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-016"
+    },
+    {
       "from": "mcp.server",
       "kind": "decided_by",
       "source": "agent",
@@ -316,6 +337,13 @@
       "to": "d-014"
     },
     {
+      "from": "viewportd.daemon",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-015"
+    },
+    {
       "from": "web.data",
       "kind": "decided_by",
       "source": "agent",
@@ -328,6 +356,13 @@
       "source": "agent",
       "sync": "unverified",
       "to": "d-012"
+    },
+    {
+      "from": "web.pages",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-015"
     },
     {
       "from": "core.api",
@@ -778,8 +813,8 @@
       "tech": "React, Vite"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:28e98b4cdf09428e90072fb89a2fe860",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:e26ba317f095c048900152d41b58f307",
       "id": "core.api",
       "kind": "component",
       "name": "Public API",
@@ -791,7 +826,7 @@
       ],
       "role": "The entry point other packages import",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
       "changedAt": "5ca8de037733095a4c75399bab96af3a867f9dbd",
@@ -822,11 +857,11 @@
       "sync": "ok"
     },
     {
-      "changedAt": "5ca8de037733095a4c75399bab96af3a867f9dbd",
-      "fingerprint": "sha256:b0890ea10f7442fafa7994973c1000c9",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:e49c6ba8d2bb74cbb05f51a405b79400",
       "id": "core.learn",
       "kind": "component",
-      "name": "Learning loop",
+      "name": "Learning",
       "paths": [
         "packages/core/src/quiz*.ts",
         "packages/core/src/grade*.ts",
@@ -837,18 +872,19 @@
         "packages/core/src/calibration*.ts",
         "packages/core/src/jobs*.ts",
         "packages/core/src/asks*.ts",
-        "packages/core/src/stats*.ts"
+        "packages/core/src/stats*.ts",
+        "packages/core/src/adapt*.ts"
       ],
-      "role": "Quizzes, grades and explains the model to the developer",
+      "role": "Quizzes, grades and explains the model to the developer, and adapts levels, debt and the digest to them",
       "source": "agent",
       "sync": "ok"
     },
     {
-      "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
-      "fingerprint": "sha256:043ddb82a5c5962943d342ae17d0836c",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:0068beeec33cebb454f3730973b8eb92",
       "id": "core.model",
       "kind": "component",
-      "name": "Model store",
+      "name": "Model and storage",
       "paths": [
         "packages/core/src/schema*.ts",
         "packages/core/src/json-schema*.ts",
@@ -858,7 +894,7 @@
         "packages/core/src/config-store*.ts",
         "packages/core/src/state*.ts",
         "packages/core/src/paths.ts",
-        "packages/core/src/fsutil.ts",
+        "packages/core/src/fsutil*.ts",
         "packages/core/src/test-helpers.ts"
       ],
       "role": "Defines the model schema and stores the model, ledger and local state",
@@ -937,8 +973,8 @@
       "sync": "stale"
     },
     {
-      "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
-      "fingerprint": "sha256:81a5d8edfac56cdf639e635786aa5aca",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:fd02e7497a96cd9bebf889c5ec1f95c6",
       "id": "hooks.events",
       "kind": "component",
       "name": "Hook scripts",
@@ -951,7 +987,7 @@
       ],
       "role": "Runs on Claude Code session, edit and stop events",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
       "changedAt": "5ca8de037733095a4c75399bab96af3a867f9dbd",
@@ -1023,8 +1059,8 @@
       "sync": "ok"
     },
     {
-      "changedAt": "5ca8de037733095a4c75399bab96af3a867f9dbd",
-      "fingerprint": "sha256:6c576c1ca0dfd01db98aec7f4039760d",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:24ea729dcffb739177fa0438ecfca4a1",
       "id": "viewportd.daemon",
       "kind": "component",
       "name": "Local daemon",
@@ -1040,8 +1076,8 @@
       "sync": "ok"
     },
     {
-      "changedAt": "95030d896f973d1121bfb868728bc31ad7faa8fd",
-      "fingerprint": "sha256:d7d2f98fa578ec84c4f4c9492761c77f",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:9515d8b266ef5fa3c30460b9f73fd7d4",
       "id": "web.data",
       "kind": "component",
       "name": "Data access",
@@ -1056,8 +1092,8 @@
       "sync": "ok"
     },
     {
-      "changedAt": "95030d896f973d1121bfb868728bc31ad7faa8fd",
-      "fingerprint": "sha256:7118a1aabc24ed0b5862a0d1f835d3db",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:69d742d32949bbd3ff7f3d84b33e40a3",
       "id": "web.pages",
       "kind": "component",
       "name": "Pages",
@@ -1078,8 +1114,8 @@
       "sync": "ok"
     },
     {
-      "changedAt": "95030d896f973d1121bfb868728bc31ad7faa8fd",
-      "fingerprint": "sha256:e1366eac5dd15243ef984bedcb2a9fda",
+      "changedAt": "be868991516cec574accbe7680c734add14fab28",
+      "fingerprint": "sha256:16946a4f76985aef18092450d61b7178",
       "id": "web.parts",
       "kind": "component",
       "name": "Shared views",
@@ -1221,8 +1257,26 @@
       "reversibility": "easy",
       "source": "agent",
       "sync": "unverified"
+    },
+    {
+      "blastRadius": 9,
+      "id": "d-015",
+      "kind": "decision",
+      "name": "What counts as an area when remembering a detail level",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
+    },
+    {
+      "blastRadius": 5,
+      "id": "d-016",
+      "kind": "decision",
+      "name": "Whether the daily digest reaches the session or stays in the viewer",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
     }
   ],
-  "revision": 27,
+  "revision": 30,
   "version": 2
 }

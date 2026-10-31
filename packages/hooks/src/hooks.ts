@@ -7,14 +7,18 @@ import {
   VIEWPORT_DIR,
   applyReport,
   coverage,
+  dailyDigest,
+  digestLine,
   enqueueJob,
   explainDue,
+  familiarityScores,
   listSources,
   logEvent,
   openState,
   readConfig,
   readLedger,
   readModel,
+  takeDigestTurn,
   uncommittedFiles,
   unresolvedFlags,
   verify,
@@ -78,6 +82,9 @@ export async function sessionStart(root: string): Promise<HookOutput> {
   const ledger = await readLedger(paths.ledger);
   const state = openState(paths.stateDb);
   const flags = unresolvedFlags(state);
+  // For the developer's eyes, not Claude's context, so it costs no tokens (D-016).
+  const digest = digestLine(dailyDigest(state, model, ledger, familiarityScores(state)));
+  const showDigest = digest !== undefined && takeDigestTurn(state);
   state.close();
 
   const lines = ["Viewport keeps a model of this system in .viewport/ for the developer, who reads it in the viewer."];
@@ -87,7 +94,7 @@ export async function sessionStart(root: string): Promise<HookOutput> {
   lines.push(`Ledger: ${ledger.length} decision${ledger.length === 1 ? "" : "s"}${ledger.length > 0 ? `, latest ${ledger.at(-1)!.id}` : ""}. Read with ledger_get.`);
   if (flags.length > 0) lines.push(`The developer has ${flags.length} unanswered question${flags.length === 1 ? "" : "s"}: see flags_pending and answer with flags_resolve.`);
   lines.push(DECISION_RULE);
-  return context("SessionStart", lines.join("\n"));
+  return { ...context("SessionStart", lines.join("\n")), ...(showDigest ? { systemMessage: digest } : {}) };
 }
 
 function overview(model: Model): string {

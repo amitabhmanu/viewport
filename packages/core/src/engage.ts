@@ -78,6 +78,8 @@ export interface QuizItemInput {
   choices?: string[];
   /** What a good answer says (for `predict`, the right choice). The grader reads it; the developer never sees it before answering. */
   answer?: string;
+  /** Posed a level above where most readers are, to show whether they are ready to step up. */
+  stretch?: boolean;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -88,7 +90,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  */
 export function writeQuizItems(db: DatabaseSync, items: QuizItemInput[], now = new Date()): number[] {
   const insert = db.prepare(
-    "INSERT INTO quiz_items (created_at, subject, kind, question, choices, due_at, answer) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+    "INSERT INTO quiz_items (created_at, subject, kind, question, choices, due_at, answer, stretch) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
   );
   const due = new Date(now.getTime() + DAY_MS).toISOString();
   const ids: number[] = [];
@@ -102,7 +104,7 @@ export function writeQuizItems(db: DatabaseSync, items: QuizItemInput[], now = n
       if (item.kind === "predict" && item.answer !== undefined && !(item.choices ?? []).includes(item.answer)) {
         throw new EngageError(`the answer to '${item.question}' must be one of its choices`);
       }
-      const row = insert.get(now.toISOString(), item.subject, item.kind, item.question, choices, due, item.answer ?? null) as { id: number };
+      const row = insert.get(now.toISOString(), item.subject, item.kind, item.question, choices, due, item.answer ?? null, item.stretch ? 1 : 0) as { id: number };
       ids.push(row.id);
     }
     db.exec("COMMIT");

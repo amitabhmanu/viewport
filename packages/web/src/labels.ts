@@ -232,6 +232,49 @@ export function bySalience(changes: Change[], salience: Record<string, number>):
   return [...changes].sort((a, b) => score(b) - score(a));
 }
 
+export interface ChangeGroup {
+  /** The process these changes bear on, or undefined for the rest. */
+  process: string | undefined;
+  changes: Change[];
+}
+
+/**
+ * Today's changes by the process they bear on, the way the reader thinks about the
+ * work. A change to a part that serves two processes shows under both. Keeps the given
+ * order within a group, and the most relevant process first; with no processes in the
+ * model there is just the one group.
+ */
+export function changesByProcess(changes: Change[], model: Model): ChangeGroup[] {
+  const parent = new Map(model.edges.filter((e) => e.kind === "contains").map((e) => [e.to, e.from]));
+  const kinds = new Map(model.nodes.map((n) => [n.id, n.kind]));
+  const processOf = (id: string) => (kinds.get(id) === "process" ? id : kinds.get(id) === "step" ? parent.get(id) : undefined);
+  const served = new Map<string, Set<string>>();
+  const serve = (id: string, process: string | undefined) => {
+    if (process !== undefined) served.set(id, (served.get(id) ?? new Set()).add(process));
+  };
+  for (const id of kinds.keys()) serve(id, processOf(id));
+  // Outward from the steps, each kind after the ones its source depends on: parts and tests, rules, what rules assume, then data through the parts that use it.
+  const spread = (edgeKinds: string[], known: "from" | "to") => {
+    for (const e of model.edges) {
+      if (!edgeKinds.includes(e.kind)) continue;
+      for (const p of served.get(e[known]) ?? []) serve(known === "from" ? e.to : e.from, p);
+    }
+  };
+  spread(["implements", "covers"], "to");
+  spread(["constrained_by"], "from");
+  spread(["assumes"], "from");
+  spread(["owns", "reads", "writes"], "from");
+  const groups = new Map<string | undefined, Change[]>();
+  const add = (key: string | undefined, c: Change) => groups.set(key, [...(groups.get(key) ?? []), c]);
+  for (const c of changes) {
+    const processes = new Set([c.subject, ...c.nodes].flatMap((id) => [...(served.get(id) ?? [])]));
+    if (processes.size === 0) add(undefined, c);
+    for (const p of processes) add(p, c);
+  }
+  // The rest goes last, whatever it holds.
+  return [...groups].sort(([a], [b]) => Number(a === undefined) - Number(b === undefined)).map(([process, list]) => ({ process, changes: list }));
+}
+
 /**
  * A decision's options in an order that does not give the answer away (agents tend
  * to list their pick first), the same every time for the same decision.

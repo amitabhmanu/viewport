@@ -26,6 +26,7 @@ export const ExplainOutput = z.object({
       question: z.string().min(1).max(400),
       choices: z.array(z.string().min(1)).optional(),
       answer: z.string().min(1).max(600),
+      stretch: z.boolean().optional(),
     }),
   ),
 });
@@ -137,7 +138,7 @@ export async function applyExplanation(modelPath: string, db: DatabaseSync, ledg
     perSubject.set(q.subject, n);
     return n <= QUESTIONS_PER_SUBJECT;
   });
-  if (questions.length > 0) writeQuizItems(db, questions.map(({ choices, ...q }) => ({ ...q, ...(choices ? { choices } : {}) })));
+  if (questions.length > 0) writeQuizItems(db, questions.map(({ choices, stretch, ...q }) => ({ ...q, ...(choices ? { choices } : {}), ...(stretch ? { stretch } : {}) })));
   markExplained(db, written, ledger, subjects);
   return { takeaways: takeaways.size, questions: questions.length };
 }

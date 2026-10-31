@@ -1,8 +1,9 @@
-import type { Change, Decision, Job, Model } from "@viewport/core";
+import type { Change, Decision, Digest, DigestDecision, Job, Model, ViewEdgeKind } from "@viewport/core";
+import type { MouseEvent } from "react";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Calibration } from "./Calibration.js";
-import { CHANGE_LABEL, KIND_LABEL, bySalience, homeView, seenWith, toPredict } from "./labels.js";
+import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, bySalience, changesByProcess, homeView, seenWith, toPredict } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { FLAG_STATUS } from "./Flags.js";
 import { PredictPrompt } from "./Predict.js";
@@ -22,6 +23,8 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const answers = useLoad(api.answers, [live.state]);
   const scores = useLoad(api.salience, [live.model, live.ledger, live.state]);
   const calibration = useLoad(api.calibration, [live.state]);
+  const debt = useLoad(api.debt, [live.model, live.state]);
+  const digest = useLoad(api.digest, [live.ledger, live.state, live.model]);
   const error = model.error ?? ledger.error ?? flags.error;
   if (error) return <p className="error">{error}</p>;
   if (!model.data) return <p className="muted page">Loading…</p>;
@@ -32,16 +35,25 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const open = (flags.data ?? []).filter((f) => f.status !== "resolved");
   const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
   const answered = (flags.data ?? []).filter((f) => f.resolvedAt !== undefined && Date.parse(f.resolvedAt) > weekAgo).reverse();
-  const tiles: [string, number, string][] = [
+  const debtHref = mapHref("containers", { overlay: "debt" });
+  const tiles: [string, number | string, string][] = [
     ["Components", components.length, mapHref("overview")],
     ["Changed since modeled", stale.length, mapHref("containers")],
     ["Not yet checked", unverified.length, mapHref("containers")],
     ["Decisions", ledger.data?.length ?? 0, "/ledger"],
     ["Open questions", open.length, "/"],
+    ...(debt.data && debt.data.items.length > 0 ? ([["Not yet understood", `${debt.data.gap}%`, debtHref]] as [string, string, string][]) : []),
   ];
+  const processGroups = changesByProcess(bySalience(changes, scores.data?.salience ?? {}), model.data);
+  const processName = (id: string) => model.data!.nodes.find((n) => n.id === id)?.name ?? id;
+  const link = (href: string) => (e: MouseEvent) => {
+    e.preventDefault();
+    go(href);
+  };
   return (
     <section className="page narrow">
       <h1>Today</h1>
+      {digest.data && <DigestCard digest={digest.data} link={link} />}
       <div className="tiles">
         {tiles.map(([label, n, href]) => (
           <a
@@ -80,11 +92,44 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
       {changes.length === 0 ? (
         <p className="muted">You are up to date.</p>
       ) : (
-        <ul className="changes">
-          {bySalience(changes, scores.data?.salience ?? {}).map((c) => (
-            <ChangeItem key={c.subject} c={c} model={model.data!} changes={changes} go={go} />
-          ))}
-        </ul>
+        processGroups.map((g) => (
+          <div key={g.process ?? ""}>
+            {(g.process !== undefined || processGroups.length > 1) && <h3>{g.process !== undefined ? processName(g.process) : "Everything else"}</h3>}
+            <ul className="changes">
+              {g.changes.map((c) => (
+                <ChangeItem key={c.subject} c={c} model={model.data!} changes={changes} go={go} />
+              ))}
+            </ul>
+          </div>
+        ))
+      )}
+      {debt.data && debt.data.items.some((i) => i.band) && (
+        <>
+          <div className="section-head">
+            <h2>Where you know least</h2>
+            <a href={debtHref} onClick={link(debtHref)}>
+              Show all
+            </a>
+          </div>
+          <ul className="debt-list">
+            {debt.data.items
+              .filter((i) => i.band)
+              .slice(0, 3)
+              .map((i) => {
+                const href = mapHref(homeView(model.data!, i.id), { focus: i.id });
+                return (
+                  <li key={i.id}>
+                    <a href={href} onClick={link(href)}>
+                      {i.name}
+                    </a>{" "}
+                    <span className="muted">
+                      a change here touches {i.reach} part{i.reach === 1 ? "" : "s"}
+                    </span>
+                  </li>
+                );
+              })}
+          </ul>
+        </>
       )}
       {open.length > 0 && (
         <>
@@ -134,6 +179,47 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   );
 }
 
+/** The last day in short. One-way decisions stand apart and stay until looked at; Claude never waits for them (D-001). */
+function DigestCard({ digest, link }: { digest: Digest; link: (href: string) => (e: MouseEvent) => void }) {
+  const total = digest.decisions.length + digest.moreDecisions;
+  const rest = [
+    ...(digest.quizDue > 0 ? [`${digest.quizDue} question${digest.quizDue === 1 ? "" : "s"} due`] : []),
+    ...(digest.answers > 0 ? [`${digest.answers} answer${digest.answers === 1 ? "" : "s"} from Claude`] : []),
+  ];
+  if (digest.oneWay.length === 0 && total === 0 && rest.length === 0) return null;
+  const toDecision = (d: DigestDecision) => (
+    <li key={d.id}>
+      <a href={`/ledger#${d.id}`} onClick={link(`/ledger#${d.id}`)}>
+        {d.title}
+      </a>
+    </li>
+  );
+  return (
+    <>
+      {digest.oneWay.length > 0 && (
+        <div className="one-way-nudge" role="status">
+          <strong>Hard to undo.</strong> Claude made {digest.oneWay.length === 1 ? "a one-way decision" : `${digest.oneWay.length} one-way decisions`} you have not looked at yet:
+          <ul>{digest.oneWay.slice(0, 3).map(toDecision)}</ul>
+        </div>
+      )}
+      {(total > 0 || rest.length > 0) && (
+        <div className="digest">
+          {total > 0 && (
+            <>
+              <strong>
+                {total} new decision{total === 1 ? "" : "s"} since yesterday
+                {digest.moreDecisions > 0 ? `; the ${digest.decisions.length} most worth knowing:` : ":"}
+              </strong>
+              <ul>{digest.decisions.map(toDecision)}</ul>
+            </>
+          )}
+          {rest.length > 0 && <p className="muted">{rest.join(" · ")}</p>}
+        </div>
+      )}
+    </>
+  );
+}
+
 /** One change. Opening it shows it in place and marks it seen; a removed item can only be dismissed. */
 function ChangeItem({ c, model, changes, go }: { c: Change; model: Model; changes: Change[]; go: (to: string) => void }) {
   const focus = c.what === "node" ? c.subject : c.nodes[0];
@@ -142,7 +228,7 @@ function ChangeItem({ c, model, changes, go }: { c: Change; model: Model; change
   return (
     <li>
       <span className={`tag ${c.change}`}>{CHANGE_LABEL[c.change]}</span>{" "}
-      <span className="muted">{c.what === "edge" ? "Dependency" : c.what === "decision" ? "Decision" : KIND_LABEL[model.nodes.find((n) => n.id === c.subject)?.kind ?? "component"]}</span>{" "}
+      <span className="muted">{c.what === "edge" ? EDGE_LABEL[c.subject.slice(0, c.subject.indexOf(":")) as ViewEdgeKind].noun : c.what === "decision" ? "Decision" : KIND_LABEL[model.nodes.find((n) => n.id === c.subject)?.kind ?? "component"]}</span>{" "}
       {href ? (
         <a
           href={href}

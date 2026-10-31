@@ -10,6 +10,8 @@
   --unverified: #a3a09a;
   --edge: #8a877f;
   --chart: #2f5fd0;
+  --debt-high: #fbdcc6;
+  --debt-some: #fdf0e5;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -25,6 +27,8 @@
     --unverified: #6f6d68;
     --edge: #8d8a83;
     --chart: #5f88e8;
+    --debt-high: #5a3218;
+    --debt-some: #3a2a1e;
     color-scheme: dark;
   }
 }
@@ -164,6 +168,18 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 
 /* What-if, comparisons and pins (Phase 9). */
 .impact { margin: 0 0 12px; padding-left: 18px; }
+.node.debt-high rect { fill: var(--debt-high); }
+.node.debt-some rect { fill: var(--debt-some); }
+.map-tools { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.map-tools button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.suggestion { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0; padding: 8px 16px; background: var(--accent-soft); border-bottom: 1px solid var(--line); }
+.digest { margin: 0 0 20px; padding: 12px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.digest ul { margin: 4px 0 0; padding-left: 18px; }
+.one-way-nudge { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--stale); border-left-width: 4px; border-radius: 6px; }
+.one-way-nudge ul { margin: 4px 0 0; padding-left: 18px; }
+.nav-count { margin-left: 5px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--stale); color: var(--surface); }
+.debt-list { list-style: none; padding: 0; margin: 0; }
+.debt-list li { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .follow-up { margin-top: 16px; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; }
 .option-cards { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .option-cards li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }

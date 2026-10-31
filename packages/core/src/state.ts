@@ -98,6 +98,14 @@ export const MIGRATIONS: readonly string[] = [
   );
   ALTER TABLE quiz_items ADD COLUMN answer TEXT;
   `,
+  `
+  CREATE TABLE levels (
+    area TEXT PRIMARY KEY,
+    level TEXT CHECK (level IN ('simple', 'medium', 'complex')),
+    since TEXT NOT NULL
+  );
+  ALTER TABLE quiz_items ADD COLUMN stretch INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 /** Opens (creating if needed) state.db in WAL mode and applies pending migrations. */

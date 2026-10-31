@@ -1,4 +1,4 @@
-import type { Change, Level, ModelNode, SplitView } from "@viewport/core";
+import type { Change, DebtBand, Level, ModelNode, SplitView } from "@viewport/core";
 import { useEffect, useState } from "react";
 import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, arrowText, subtitle } from "./labels.js";
 import { type Layout, layout, syncMarker } from "./layout.js";
@@ -20,10 +20,12 @@ interface Props {
   selectedEdge?: string | undefined;
   /** Short notes on boxes, by node id: "Personal data", "To confirm", "No tests". */
   notes?: Map<string, string>;
+  /** Boxes to shade by comprehension debt, by node id. */
+  debt?: Map<string, DebtBand> | undefined;
 }
 
 /** One sub-view as an SVG diagram: boxes for elements, dashed boxes for stubs, arrows for dependencies. */
-export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge, notes }: Props) {
+export function Diagram({ part, nodes, modes, level, changed, selected, onSelect, onOpen, onStub, onSelectEdge, selectedEdge, notes, debt }: Props) {
   const [laid, setLaid] = useState<Layout>();
   useEffect(() => {
     let live = true;
@@ -79,8 +81,9 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
         const marker = b.stub ? undefined : syncMarker(node);
         const target = part.continuesIn[b.id];
         const change = b.stub ? undefined : changed.get(b.id);
-        const note = b.stub ? undefined : notes?.get(b.id);
-        const cls = ["node", node?.kind ?? "unknown", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? "", change ? "fresh" : ""].filter(Boolean).join(" ");
+        const band = b.stub ? undefined : debt?.get(b.id);
+        const note = b.stub ? undefined : (notes?.get(b.id) ?? (band === "high" ? "Least known" : undefined));
+        const cls = ["node", node?.kind ?? "unknown", b.stub ? "stub" : "", selected === b.id ? "selected" : "", marker ?? "", change ? "fresh" : "", band ? `debt-${band}` : ""].filter(Boolean).join(" ");
         return (
           <g
             key={b.id}
