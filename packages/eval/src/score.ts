@@ -38,6 +38,7 @@ export function leftoverFindings(report: VerificationReport): string[] {
     ...report.missingDependencies.map((d) => `missing ${d.from} -> ${d.to}`),
     ...report.unsupportedEdges.map((e) => `unsupported ${e}`),
     ...report.staleComponents.map((c) => `changed since modeled ${c}`),
+    ...report.emptyTests.map((t) => `empty test group ${t}`),
   ];
 }
 

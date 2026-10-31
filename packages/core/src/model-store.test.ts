@@ -7,7 +7,14 @@ import { shopModel, tempDir } from "./test-helpers.js";
 describe("model store", () => {
   it("reads a missing file as an empty model", async () => {
     const m = await readModel(join(await tempDir(), "model.json"));
-    expect(m).toEqual({ version: 1, revision: 0, nodes: [], edges: [] });
+    expect(m).toEqual({ version: 2, revision: 0, nodes: [], edges: [] });
+  });
+
+  it("writes a version 1 model back as version 2", async () => {
+    const path = join(await tempDir(), ".viewport", "model.json");
+    expect(shopModel().version).toBe(1);
+    expect((await writeModel(path, shopModel())).version).toBe(2);
+    expect((await readModel(path)).version).toBe(2);
   });
 
   it("round-trips and bumps the revision", async () => {

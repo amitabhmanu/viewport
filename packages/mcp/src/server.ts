@@ -77,6 +77,7 @@ function findings(r: VerificationReport) {
     missingDependencies: cap(r.missingDependencies.map((d) => `${d.from} -> ${d.to} (${d.evidence[0]?.file ?? "?"})`)),
     unsupportedEdges: r.unsupportedEdges,
     changedSinceModeled: r.staleComponents,
+    emptyTests: r.emptyTests,
     notes: r.notes,
   };
 }
@@ -200,7 +201,7 @@ export function createServer(root: string): McpServer {
     "model_verify",
     {
       description:
-        "Checks the whole model against the code without changing anything: files no component owns, overlapping components, imports with no depends_on edge, sync or async edges no import backs, and components whose code changed since they were modeled.",
+        "Checks the whole model against the code without changing anything: files no component owns, overlapping components, imports with no depends_on edge, sync or async edges no import backs, covers edges whose tests import nothing that implements what they cover, owns/reads/writes edges whose component never names the entity, test groups that match no files, and components whose code changed since they were modeled.",
       inputSchema: {},
       annotations: read,
     },
@@ -226,7 +227,7 @@ export function createServer(root: string): McpServer {
     "model_upsert",
     {
       description:
-        "Adds or replaces nodes (by id) and edges (by kind, from and to), then validates the whole model, verifies it against the code and saves it. Returns what verification found. Shapes are in the viewport-modeling skill; a component is {kind:'component', id:'app.x', name, role, paths:[globs]} and a dependency {kind:'depends_on', from, to, mode:'sync'|'async'|'data'}.",
+        "Adds or replaces nodes (by id) and edges (by kind, from and to), then validates the whole model, verifies it against the code and saves it. Returns what verification found. Shapes are in the viewport-modeling skill; a component is {kind:'component', id:'app.x', name, role, paths:[globs]} and a dependency {kind:'depends_on', from, to, mode:'sync'|'async'|'data'}. Processes, steps, rules, assumptions, entities, tests and runtimes are described there too.",
       inputSchema: {
         // Loose here and validated in mergeIntoModel: the full schema would cost every request ~1k tokens.
         nodes: z.array(z.record(z.string(), z.unknown())).default([]),

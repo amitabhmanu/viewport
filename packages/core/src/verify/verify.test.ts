@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Config, type Model } from "../schema.js";
-import { shopModel, tempDir } from "../test-helpers.js";
+import { completeShopModel, shopModel, tempDir } from "../test-helpers.js";
 import { applyReport, coverage, filesByComponent, fingerprintFiles, isClean, listSources, verify } from "./index.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../../fixtures/py-shop", import.meta.url));
@@ -150,21 +150,6 @@ describe("applyReport", () => {
 });
 
 /** The py-shop model with the package file claimed and every observed dependency declared. */
-function completeShopModel(changedAt?: string): Model {
-  const model = shopModel();
-  const api = model.nodes.find((n) => n.id === "app.api");
-  if (api?.kind === "component") api.paths.push("src/shop/__init__.py");
-  for (const [from, to] of [
-    ["app.orders", "app.payments"],
-    ["app.orders", "app.storage"],
-    ["app.storage", "app.orders"],
-  ] as const) {
-    model.edges.push({ kind: "depends_on", from, to, mode: "sync", source: "agent", sync: "unverified" });
-  }
-  if (changedAt) for (const n of model.nodes) if (n.kind === "component") n.changedAt = changedAt;
-  return model;
-}
-
 /** Fingerprints every component against the current files, as `viewport model write` does. */
 async function fingerprintAll(model: Model): Promise<void> {
   const owned = filesByComponent(coverage(await listSources(root, config), model).owner);

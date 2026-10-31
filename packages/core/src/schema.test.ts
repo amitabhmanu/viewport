@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { Decision, Model, ModelEdge } from "./schema.js";
-import { shopModel } from "./test-helpers.js";
+import { Decision, Model, ModelEdge, emptyModel } from "./schema.js";
+import { shopModel, shopModelV2 } from "./test-helpers.js";
 
 function issues(m: unknown): string[] {
   const r = Model.safeParse(m);
@@ -63,11 +63,72 @@ describe("Model", () => {
   });
 });
 
+describe("Model v2 layers", () => {
+  const meta = { source: "agent" as const, sync: "unverified" as const };
+
+  it("accepts processes, rules, assumptions, entities, tests and runtimes", () => {
+    expect(issues(shopModelV2())).toEqual([]);
+  });
+
+  it("still reads version 1 models", () => {
+    expect(issues({ ...shopModel(), version: 1 })).toEqual([]);
+    expect(issues({ ...shopModel(), version: 3 }).length).toBeGreaterThan(0);
+  });
+
+  it("fills entity and assumption defaults", () => {
+    const m = Model.parse({ ...emptyModel(), nodes: [
+      { kind: "entity", id: "user", name: "User", description: "Someone with an account" },
+      { kind: "assumption", id: "a", name: "A", statement: "Users have one email" },
+    ] });
+    expect(m.nodes[0]).toMatchObject({ sensitivity: "internal", code: [] });
+    expect(m.nodes[1]).toMatchObject({ status: "open" });
+  });
+
+  it("rejects a step outside any process, and a step in two", () => {
+    const m = shopModelV2();
+    m.edges = m.edges.filter((e) => !(e.kind === "contains" && e.to === "ordering.refund"));
+    expect(issues(m)).toContain("step 'ordering.refund' is not inside any process");
+    const two = shopModelV2();
+    two.nodes.push({ ...meta, kind: "process", id: "returns", name: "Returns", goal: "Send items back" });
+    two.edges.push({ ...meta, kind: "contains", from: "returns", to: "ordering.refund" });
+    expect(issues(two)).toContain("step 'ordering.refund' has 2 parents");
+  });
+
+  it("rejects next edges between processes and wrong edge ends", () => {
+    const m = shopModelV2();
+    m.nodes.push(
+      { ...meta, kind: "process", id: "returns", name: "Returns", goal: "Send items back" },
+      { ...meta, kind: "step", id: "returns.ship", name: "Ship back", does: "Customer ships the item" },
+    );
+    m.edges.push(
+      { ...meta, kind: "contains", from: "returns", to: "returns.ship" },
+      { ...meta, kind: "next", from: "ordering.refund", to: "returns.ship" },
+      { ...meta, kind: "covers", from: "app.api", to: "ordering.place" },
+      { ...meta, kind: "contains", from: "app", to: "ordering.place" },
+    );
+    const found = issues(m);
+    expect(found).toContain("next edge 'next:ordering.refund->returns.ship' joins steps of different processes");
+    expect(found).toContain("covers cannot connect a component to a step");
+    expect(found).toContain("a container cannot contain a step");
+  });
+
+  it("allows one owner per entity", () => {
+    const m = shopModelV2();
+    m.edges.push({ ...meta, kind: "owns", from: "app.storage", to: "order" });
+    expect(issues(m)).toContain("entity 'order' has 2 owners");
+  });
+});
+
 describe("ModelEdge", () => {
   it("requires a mode on depends_on and forbids it elsewhere", () => {
     expect(ModelEdge.safeParse({ kind: "depends_on", from: "a", to: "b" }).success).toBe(false);
     expect(ModelEdge.safeParse({ kind: "contains", from: "a", to: "b", mode: "sync" }).success).toBe(false);
     expect(ModelEdge.safeParse({ kind: "depends_on", from: "a", to: "b", mode: "async" }).success).toBe(true);
+  });
+
+  it("allows when only on next edges", () => {
+    expect(ModelEdge.safeParse({ kind: "next", from: "a", to: "b", when: "it shipped" }).success).toBe(true);
+    expect(ModelEdge.safeParse({ kind: "uses", from: "a", to: "b", when: "it shipped" }).success).toBe(false);
   });
 });
 

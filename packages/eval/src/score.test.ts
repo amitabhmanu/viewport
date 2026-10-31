@@ -51,10 +51,11 @@ describe("leftoverFindings and totalTokens", () => {
       unsupportedEdges: [],
       staleComponents: ["z"],
       unknownFreshness: [],
+      emptyTests: ["t"],
       notes: [],
       durationMs: 1,
     });
-    expect(left).toEqual(["unclaimed a.py", "missing x -> y", "changed since modeled z"]);
+    expect(left).toEqual(["unclaimed a.py", "missing x -> y", "changed since modeled z", "empty test group t"]);
   });
 
   it("sums tokens over every model", () => {

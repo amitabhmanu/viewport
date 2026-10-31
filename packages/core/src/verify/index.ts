@@ -7,6 +7,8 @@ import { resolvePythonImport } from "./python.js";
 import { readTsPaths, readWorkspacePackages, resolveTsImport } from "./typescript.js";
 import { checkFreshness } from "./freshness.js";
 import { scanImports } from "./import-cache.js";
+import { checkLinks, isCheckedLink, testFiles } from "./links.js";
+import { ModelGraph } from "../query/graph.js";
 import { coverage, listSources } from "./sources.js";
 
 export interface VerificationReport {
@@ -20,6 +22,8 @@ export interface VerificationReport {
   /** Only computed in full scope. */
   staleComponents: string[];
   unknownFreshness: string[];
+  /** Test nodes whose globs match no file. Only computed in full scope. */
+  emptyTests: string[];
   notes: string[];
   durationMs: number;
 }
@@ -63,6 +67,7 @@ export async function verify(root: string, model: Model, config: Config, options
     unsupportedEdges: incremental ? [] : diff.unsupported,
     staleComponents: [],
     unknownFreshness: [],
+    emptyTests: [],
     notes: [],
     durationMs: 0,
   };
@@ -71,6 +76,12 @@ export async function verify(root: string, model: Model, config: Config, options
     report.staleComponents = fresh.stale;
     report.unknownFreshness = fresh.unknown;
     if (fresh.skipped) report.notes.push(`freshness skipped: ${fresh.skipped}`);
+
+    const tests = await testFiles(root, model);
+    const testImports = await scanImports(root, [...new Set([...tests.values()].flat())], join(paths.localDir, "imports.json"));
+    const links = await checkLinks(root, model, cov.owner, tests, testImports, resolve);
+    report.unsupportedEdges = [...report.unsupportedEdges, ...links.unsupported].sort();
+    report.emptyTests = links.emptyTests;
   }
   report.durationMs = Math.round(performance.now() - started);
   return report;
@@ -83,7 +94,8 @@ export function isClean(report: VerificationReport): boolean {
     report.doubleClaimed.length === 0 &&
     report.missingDependencies.length === 0 &&
     report.unsupportedEdges.length === 0 &&
-    report.staleComponents.length === 0
+    report.staleComponents.length === 0 &&
+    report.emptyTests.length === 0
   );
 }
 
@@ -98,10 +110,13 @@ export function applyReport(model: Model, report: VerificationReport): Model {
   for (const d of report.doubleClaimed) d.components.forEach((c) => staleNodes.add(c));
   const staleEdges = new Set(report.unsupportedEdges);
   const unknown = new Set(report.unknownFreshness);
+  const emptyTests = new Set(report.emptyTests);
   const full = report.scope === "full";
+  const graph = new ModelGraph(model);
   const graphKinds = new Map(model.nodes.map((n) => [n.id, n.kind]));
 
   const nodes = model.nodes.map((n): ModelNode => {
+    if (n.kind === "test" && full) return { ...n, sync: emptyTests.has(n.id) ? "stale" : "ok" };
     if (n.kind !== "component") return n;
     if (staleNodes.has(n.id)) return { ...n, sync: "stale" };
     if (full) return { ...n, sync: unknown.has(n.id) ? "unverified" : "ok" };
@@ -109,8 +124,10 @@ export function applyReport(model: Model, report: VerificationReport): Model {
   });
   const edges = model.edges.map((e): ModelEdge => {
     if (staleEdges.has(edgeKey(e))) return { ...e, sync: "stale" };
-    // A full scan checks every sync or async edge between components against imports.
-    if (full && e.kind === "depends_on" && e.mode !== "data" && graphKinds.get(e.from) === "component" && graphKinds.get(e.to) === "component") return { ...e, sync: "ok" };
+    if (!full) return e;
+    // A full scan checks every sync or async edge between components against imports, and the links D-009 covers.
+    if (e.kind === "depends_on" && e.mode !== "data" && graphKinds.get(e.from) === "component" && graphKinds.get(e.to) === "component") return { ...e, sync: "ok" };
+    if (isCheckedLink(graph, e)) return { ...e, sync: "ok" };
     return e;
   });
   return { ...model, nodes, edges };
@@ -123,4 +140,6 @@ export type { TsImport, TsPaths, WorkspacePackage } from "./typescript.js";
 export { extractPythonImports, resolvePythonImport } from "./python.js";
 export type { RawImport } from "./python.js";
 export { coverage, listSources } from "./sources.js";
+export { checkLinks, isCheckedLink, testFiles } from "./links.js";
+export type { LinkReport } from "./links.js";
 export { checkFreshness, fingerprintFiles, filesByComponent, headCommit, uncommittedFiles } from "./freshness.js";

@@ -5,7 +5,7 @@ import { claimJob, enqueueJob, finishJob, openJobs, requeueStale } from "./jobs.
 import { readModel, writeModel } from "./model-store.js";
 import type { Decision } from "./schema.js";
 import { openState } from "./state.js";
-import { shopModel, tempDir } from "./test-helpers.js";
+import { shopModel, shopModelV2, tempDir } from "./test-helpers.js";
 
 const decision: Decision = {
   id: "D-001",
@@ -41,6 +41,12 @@ describe("jobs", () => {
 });
 
 describe("explainer", () => {
+  it("leaves out kinds the viewer does not draw yet", () => {
+    const due = explainDue(openState(":memory:"), shopModelV2(), []);
+    expect(due).toContain("app.orders");
+    expect(due.filter((id) => ["ordering", "ordering.place", "refund-shipped", "full-refund", "order", "checkout-tests", "server"].includes(id))).toEqual([]);
+  });
+
   it("explains what is new or changed once, and stores takeaways and questions from the batch only", async () => {
     const path = join(await tempDir(), ".viewport", "model.json");
     const db = openState(":memory:");
