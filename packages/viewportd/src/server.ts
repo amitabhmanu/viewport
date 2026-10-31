@@ -310,7 +310,7 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" }).end(JSON.stringify(body));
     })().catch((err: unknown) => {
       const status = err instanceof HttpError ? err.status : err instanceof QueryError || err instanceof EngageError || err instanceof ZodError || err instanceof SyntaxError ? 400 : err instanceof ConfigMissingError ? 404 : 500;
-      const message = err instanceof ZodError ? err.issues.map((i) => i.message).join("; ") : err instanceof Error ? err.message : String(err);
+      const message = err instanceof ZodError ? err.issues.map((i) => (i.path.length > 0 ? `${i.path.join(".")}: ${i.message}` : i.message)).join("; ") : err instanceof Error ? err.message : String(err);
       if (!res.headersSent) res.writeHead(status, { "content-type": "application/json" });
       res.end(JSON.stringify({ error: message }));
     });
