@@ -4,7 +4,7 @@ import type { Config, Model, ModelEdge, ModelNode } from "../schema.js";
 import { edgeKey } from "../schema.js";
 import { type ComponentDependency, type ImportResolver, componentDependencies, diffDependencies } from "./dependencies.js";
 import { resolvePythonImport } from "./python.js";
-import { readTsPaths, resolveTsImport } from "./typescript.js";
+import { readTsPaths, readWorkspacePackages, resolveTsImport } from "./typescript.js";
 import { checkFreshness } from "./freshness.js";
 import { scanImports } from "./import-cache.js";
 import { coverage, listSources } from "./sources.js";
@@ -44,11 +44,13 @@ export async function verify(root: string, model: Model, config: Config, options
   const cov = coverage(all, model);
   const subjectSet = new Set(subject);
   const imports = await scanImports(root, subject, join(paths.localDir, "imports.json"));
-  const tsPaths = config.languages.includes("typescript") ? await readTsPaths(root, config.typescript.tsconfig) : { paths: [] };
+  const ts = config.languages.includes("typescript");
+  const tsPaths = ts ? await readTsPaths(root, config.typescript.tsconfig) : { paths: [] };
+  const packages = ts ? await readWorkspacePackages(root) : [];
   const resolve: ImportResolver = (file, found, i) =>
     found.lang === "python"
       ? resolvePythonImport(found.imports[i]!, file, allSet, config.python.roots)
-      : resolveTsImport(found.imports[i]!.specifier, file, allSet, tsPaths);
+      : resolveTsImport(found.imports[i]!.specifier, file, allSet, tsPaths, packages);
   const observed = componentDependencies(imports, cov.owner, resolve);
   const diff = diffDependencies(model, observed);
 
@@ -116,8 +118,8 @@ export function applyReport(model: Model, report: VerificationReport): Model {
 
 export { componentDependencies, diffDependencies } from "./dependencies.js";
 export type { ComponentDependency, DependencyDiff, ImportEvidence, ImportResolver } from "./dependencies.js";
-export { extractTsImports, readTsPaths, resolveTsImport } from "./typescript.js";
-export type { TsImport, TsPaths } from "./typescript.js";
+export { extractTsImports, pnpmWorkspaceGlobs, readTsPaths, readWorkspacePackages, resolveTsImport } from "./typescript.js";
+export type { TsImport, TsPaths, WorkspacePackage } from "./typescript.js";
 export { extractPythonImports, resolvePythonImport } from "./python.js";
 export type { RawImport } from "./python.js";
 export { coverage, listSources } from "./sources.js";

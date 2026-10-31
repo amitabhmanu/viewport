@@ -1,9 +1,10 @@
-import { cp } from "node:fs/promises";
+import { cp, mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Config, type Model } from "../schema.js";
 import { tempDir } from "../test-helpers.js";
-import { extractTsImports, readTsPaths, resolveTsImport, stripJsonc } from "./typescript.js";
+import { extractTsImports, pnpmWorkspaceGlobs, readTsPaths, readWorkspacePackages, resolveTsImport, stripJsonc } from "./typescript.js";
 import { isClean, verify } from "./index.js";
 
 describe("extractTsImports", () => {
@@ -56,6 +57,75 @@ describe("resolveTsImport", () => {
   it("ignores packages and paths outside the repo", () => {
     expect(resolveTsImport("react", "src/c.tsx", files, none)).toEqual([]);
     expect(resolveTsImport("../../../x", "src/c.tsx", files, none)).toEqual([]);
+  });
+});
+
+describe("workspace packages", () => {
+  const files = new Set(["packages/core/src/index.ts", "packages/core/src/query/index.ts", "packages/ui/src/button.tsx", "packages/cli/index.ts"]);
+  const none = { paths: [] };
+
+  async function repo(manifests: Record<string, object>, workspace = 'packages:\n  - "packages/*"\n'): Promise<string> {
+    const root = await tempDir();
+    await writeFile(join(root, "pnpm-workspace.yaml"), workspace);
+    for (const [dir, pkg] of Object.entries(manifests)) {
+      await mkdir(join(root, dir), { recursive: true });
+      await writeFile(join(root, dir, "package.json"), JSON.stringify(pkg));
+    }
+    return root;
+  }
+
+  it("reads the packages list of pnpm-workspace.yaml", () => {
+    const text = "# workspace\npackages:\n  - 'apps/*'   # apps\n  - \"packages/**\"\n  - '!**/test/**'\n\ncatalog:\n  - not-a-package\n";
+    expect(pnpmWorkspaceGlobs(text)).toEqual(["apps/*", "packages/**", "!**/test/**"]);
+    expect(pnpmWorkspaceGlobs("")).toEqual([]);
+  });
+
+  it("resolves a package's root and subpath exports to its sources, not its build", async () => {
+    const root = await repo({
+      "packages/core": { name: "@x/core", exports: { ".": { types: "./dist/index.d.ts", default: "./dist/index.js" }, "./*": "./dist/*/index.js" } },
+      "packages/ui": { name: "@x/ui", main: "./lib/index.js" },
+      "packages/cli": { name: "x-cli" },
+      "packages/broken": {},
+    });
+    const packages = await readWorkspacePackages(root);
+    expect(packages.map((p) => `${p.name}@${p.dir}`)).toEqual(["x-cli@packages/cli", "@x/core@packages/core", "@x/ui@packages/ui"]);
+    const from = "packages/cli/index.ts";
+    expect(resolveTsImport("@x/core", from, files, none, packages)).toEqual(["packages/core/src/index.ts"]);
+    expect(resolveTsImport("@x/core/query", from, files, none, packages)).toEqual(["packages/core/src/query/index.ts"]);
+    expect(resolveTsImport("@x/ui/button.js", from, files, none, packages)).toEqual(["packages/ui/src/button.tsx"]);
+    expect(resolveTsImport("x-cli", "packages/ui/src/button.tsx", files, none, packages)).toEqual(["packages/cli/index.ts"]);
+    expect(resolveTsImport("@x/core-extra", from, files, none, packages)).toEqual([]);
+  });
+
+  it("reads npm workspaces and skips negated globs", async () => {
+    const root = await repo({ "packages/core": { name: "@x/core" }, "packages/ui": { name: "@x/ui" } }, "");
+    await writeFile(join(root, "package.json"), JSON.stringify({ workspaces: { packages: ["packages/*", "!packages/ui"] } }));
+    expect((await readWorkspacePackages(root)).map((p) => p.name)).toEqual(["@x/core"]);
+  });
+
+  it("finds dependencies between workspace packages in verify", async () => {
+    const root = await repo({ "packages/core": { name: "@x/core", exports: "./dist/index.js" }, "packages/cli": { name: "x-cli" } });
+    await mkdir(join(root, "packages/core/src"), { recursive: true });
+    await writeFile(join(root, "packages/core/src/index.ts"), "export const x = 1;\n");
+    await writeFile(join(root, "packages/cli/index.ts"), 'import { x } from "@x/core";\nconsole.log(x);\n');
+    const config = Config.parse({ version: 1, sources: ["packages/**/*.ts"], languages: ["typescript"] });
+    const base = { source: "agent" as const, sync: "unverified" as const };
+    const report = await verify(root, {
+      version: 1,
+      revision: 0,
+      nodes: [
+        { ...base, kind: "system", id: "x", name: "X", purpose: "X" },
+        { ...base, kind: "container", id: "app", name: "App", role: "App" },
+        { ...base, kind: "component", id: "app.core", name: "core", role: "core", paths: ["packages/core/**"] },
+        { ...base, kind: "component", id: "app.cli", name: "cli", role: "cli", paths: ["packages/cli/**"] },
+      ],
+      edges: [
+        { ...base, kind: "contains", from: "x", to: "app" },
+        { ...base, kind: "contains", from: "app", to: "app.core" },
+        { ...base, kind: "contains", from: "app", to: "app.cli" },
+      ],
+    }, config);
+    expect(report.missingDependencies.map((d) => `${d.from}->${d.to}`)).toEqual(["app.cli->app.core"]);
   });
 });
 

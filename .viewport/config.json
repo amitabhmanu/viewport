@@ -15,8 +15,5 @@
   "sources": [
     "packages/**/*.{ts,tsx}"
   ],
-  "typescript": {
-    "tsconfig": ".viewport/tsconfig.json"
-  },
   "version": 1
 }
