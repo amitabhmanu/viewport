@@ -1,6 +1,6 @@
 import type { Change, Decision, Model, ModelNode, Prediction, SplitView } from "@viewport/core";
 import { describe, expect, it } from "vitest";
-import { homeView, partShowing, partSummary, rank, seenWith, shuffledOptions, subtitle, toPredict, trail, viewTitle, zoomTarget } from "./labels.js";
+import { bySalience, homeView, partShowing, partSummary, rank, seenWith, shuffledOptions, subtitle, toPredict, trail, viewTitle, zoomTarget } from "./labels.js";
 
 const orders = { kind: "component", id: "app.orders", name: "Orders", role: "Takes orders", tech: "FastAPI", paths: ["src/**"], source: "agent", sync: "ok" } as ModelNode;
 const app = { kind: "container", id: "app", name: "App", role: "Runs the shop", source: "agent", sync: "ok" } as ModelNode;
@@ -74,6 +74,20 @@ describe("changes and ledger", () => {
       "D-001",
     ]);
   });
+
+  it("puts salience ahead of reach when scores are known", () => {
+    const d = (id: string, blastRadius: number) => ({ id, blastRadius, at: "2026-10-01T00:00:00Z" }) as Decision;
+    expect(rank([d("D-001", 5), d("D-002", 1)], { "D-001": 0.4, "D-002": 3 }).map((x) => x.id)).toEqual(["D-002", "D-001"]);
+  });
+
+  it("orders changes by their most salient subject or node", () => {
+    const changes = [
+      { subject: "app.api", what: "node", change: "changed", label: "API", nodes: ["app.api"] },
+      { subject: "depends_on:app.api->app.orders", what: "edge", change: "added", label: "", nodes: ["app.api", "app.orders"] },
+      { subject: "D-001", what: "decision", change: "added", label: "", nodes: [] },
+    ] as Change[];
+    expect(bySalience(changes, { "app.api": 1, "app.orders": 4, "D-001": 2 }).map((c) => c.subject)).toEqual(["depends_on:app.api->app.orders", "D-001", "app.api"]);
+  });
 });
 
 describe("predictions", () => {
@@ -84,6 +98,7 @@ describe("predictions", () => {
     const ledger = [d("D-001", 4, "easy"), d("D-002", 2, "one-way"), d("D-003", 1, "costly"), d("D-004", 9, "one-way", { supersedes: "D-002" }), d("D-005", 5, "costly")];
     const answered = [{ decisionId: "D-005" }] as Prediction[];
     expect(toPredict(ledger, answered).map((x) => x.id)).toEqual(["D-004", "D-001", "D-003"]);
+    expect(toPredict(ledger, answered, { "D-003": 5 }).map((x) => x.id)).toEqual(["D-003", "D-004", "D-001"]);
   });
 
   it("shuffles options the same way every time, keeping them all", () => {

@@ -19,3 +19,6 @@ export * from "./jobs.js";
 export * from "./quiz.js";
 export * from "./explain.js";
 export * from "./grade.js";
+export * from "./familiarity.js";
+export * from "./salience.js";
+export * from "./calibration.js";

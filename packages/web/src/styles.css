@@ -9,6 +9,7 @@
   --stale: #c2410c;
   --unverified: #a3a09a;
   --edge: #8a877f;
+  --chart: #2f5fd0;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -23,6 +24,7 @@
     --stale: #fb923c;
     --unverified: #6f6d68;
     --edge: #8d8a83;
+    --chart: #5f88e8;
     color-scheme: dark;
   }
 }
@@ -194,3 +196,17 @@ button:disabled { opacity: .5; cursor: default; }
 .tag.grade.correct { border-color: #22a06b; color: #22a06b; }
 .tag.grade.partial { border-color: var(--accent); color: var(--accent); }
 .tag.grade.wrong { border-color: var(--stale); color: var(--stale); }
+
+/* Calibration chart on Today */
+.calibration-chart { width: 100%; max-width: 420px; height: auto; display: block; }
+.calibration-chart .grid line { stroke: var(--line); stroke-width: 1; }
+.calibration-chart text { font-size: 11px; fill: var(--muted); }
+.calibration-chart .bar { fill: var(--chart); }
+.calibration-chart .ideal { stroke: var(--ink); stroke-width: 2; stroke-dasharray: 4 3; }
+.calibration-chart .hit { fill: transparent; }
+.calibration-chart g:hover .bar { opacity: .8; }
+.calibration .legend { font-size: 13px; }
+.calibration .ideal-key { border-bottom: 2px dashed var(--ink); }
+.calibration-table { border-collapse: collapse; font-size: 14px; }
+.calibration-table th, .calibration-table td { text-align: left; padding: 2px 12px 2px 0; }
+.tag.familiar { border-color: #22a06b; color: #22a06b; }

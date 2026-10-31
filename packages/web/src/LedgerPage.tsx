@@ -15,12 +15,16 @@ const FILTERS = [
 ] as const;
 type Filter = (typeof FILTERS)[number][0];
 
+/** At or above this familiarity, a decision is marked as one the developer knows. */
+const FAMILIAR = 0.6;
+
 const REVERSIBILITY: Record<Decision["reversibility"], string> = { "one-way": "One-way", costly: "Costly to undo", easy: "Easy to undo" };
 
 export function LedgerPage() {
   const live = useLive();
   const { data, error } = useLoad(api.ledger, [live.ledger]);
   const predictions = useLoad(api.predictions, [live.state]);
+  const scores = useLoad(api.salience, [live.model, live.ledger, live.state]);
   const flags = useFlags();
   const { bySubject } = useChanges();
   const [filter, setFilter] = useState<Filter>("all");
@@ -38,7 +42,7 @@ export function LedgerPage() {
   if (!data || !predictions.data) return <p className="muted page">Loading…</p>;
   const guessed = new Map(predictions.data.map((p) => [p.decisionId, p]));
   const replaced = new Set(data.flatMap((d) => (d.supersedes ? [d.supersedes] : [])));
-  const shown = rank(data).filter((d) => filter === "all" || d.reversibility === filter);
+  const shown = rank(data, scores.data?.salience).filter((d) => filter === "all" || d.reversibility === filter);
 
   return (
     <section className="page narrow">
@@ -52,12 +56,12 @@ export function LedgerPage() {
           ))}
         </div>
       </div>
-      <p className="muted">Ranked by how many components each decision touches.</p>
+      <p className="muted">Most worth your attention first: decisions that are new to you, reach many components and are hard to undo.</p>
       {data.length === 0 && <p className="muted">No decisions yet. The agent records one whenever it picks between real options.</p>}
       {data.length > 0 && shown.length === 0 && <p className="muted">No decisions match this filter.</p>}
       <ol className="ledger">
         {shown.map((d) => (
-          <DecisionCard key={d.id} d={d} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} prediction={guessed.get(d.id)} flags={flags.get(d.id) ?? []} />
+          <DecisionCard key={d.id} d={d} familiar={(scores.data?.familiarity[d.id] ?? 0) >= FAMILIAR} isNew={bySubject.has(d.id)} replaced={replaced.has(d.id)} prediction={guessed.get(d.id)} flags={flags.get(d.id) ?? []} />
         ))}
       </ol>
     </section>
@@ -70,12 +74,14 @@ export function LedgerPage() {
  */
 function DecisionCard({
   d,
+  familiar,
   isNew,
   replaced,
   prediction,
   flags,
 }: {
   d: Decision;
+  familiar: boolean;
   isNew: boolean;
   replaced: boolean;
   prediction: Prediction | undefined;
@@ -88,6 +94,11 @@ function DecisionCard({
         <h2>{d.title}</h2>
         {isNew && <span className="tag fresh">New</span>}
         {replaced && <span className="tag">Replaced</span>}
+        {familiar && (
+          <span className="tag familiar" title="You have shown you know this one; it ranks lower">
+            Familiar
+          </span>
+        )}
         <span className={`tag ${d.reversibility}`}>{REVERSIBILITY[d.reversibility]}</span>
         <span className="radius" title="Components this decision touches">
           {d.blastRadius}

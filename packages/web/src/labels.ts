@@ -76,24 +76,39 @@ export function seenWith(id: string, changes: Change[]): string[] {
 
 export const CHANGE_LABEL: Record<Change["change"], string> = { added: "New", changed: "Changed", removed: "Removed" };
 
-/** The ledger's order: widest reach first; among equals, the newest. */
-export function rank(decisions: Decision[]): Decision[] {
-  return [...decisions].sort((a, b) => b.blastRadius - a.blastRadius || Date.parse(b.at) - Date.parse(a.at) || b.id.localeCompare(a.id));
+/**
+ * The ledger's order: most salient first (new to the developer, wide-reaching, hard to
+ * undo), then widest reach, then newest. Without scores it falls back to reach.
+ */
+export function rank(decisions: Decision[], salience: Record<string, number> = {}): Decision[] {
+  const score = (d: Decision) => salience[d.id] ?? 0;
+  return [...decisions].sort((a, b) => score(b) - score(a) || b.blastRadius - a.blastRadius || Date.parse(b.at) - Date.parse(a.at) || b.id.localeCompare(a.id));
 }
 
 const REACH: Record<Decision["reversibility"], number> = { "one-way": 3, costly: 2, easy: 1 };
 
 /**
- * Decisions still waiting for a guess, most worth thinking about first: hard-to-undo
- * calls with a wide reach, then the newest. Replaced decisions are left out.
- * (Phase 4e folds in familiarity.)
+ * Decisions still waiting for a guess, most worth thinking about first: by salience,
+ * then hard-to-undo calls with a wide reach, then the newest. Replaced decisions are left out.
  */
-export function toPredict(ledger: Decision[], predictions: Prediction[]): Decision[] {
+export function toPredict(ledger: Decision[], predictions: Prediction[], salience: Record<string, number> = {}): Decision[] {
   const done = new Set(predictions.map((p) => p.decisionId));
   const replaced = new Set(ledger.flatMap((d) => (d.supersedes ? [d.supersedes] : [])));
+  const score = (d: Decision) => salience[d.id] ?? 0;
   return ledger
     .filter((d) => !done.has(d.id) && !replaced.has(d.id))
-    .sort((a, b) => REACH[b.reversibility] * Math.max(1, b.blastRadius) - REACH[a.reversibility] * Math.max(1, a.blastRadius) || Date.parse(b.at) - Date.parse(a.at));
+    .sort(
+      (a, b) =>
+        score(b) - score(a) ||
+        REACH[b.reversibility] * Math.max(1, b.blastRadius) - REACH[a.reversibility] * Math.max(1, a.blastRadius) ||
+        Date.parse(b.at) - Date.parse(a.at),
+    );
+}
+
+/** Changes most worth a look first: a change scores as its most salient subject or node. */
+export function bySalience(changes: Change[], salience: Record<string, number>): Change[] {
+  const score = (c: Change) => Math.max(salience[c.subject] ?? 0, ...c.nodes.map((n) => salience[n] ?? 0));
+  return [...changes].sort((a, b) => score(b) - score(a));
 }
 
 /**
