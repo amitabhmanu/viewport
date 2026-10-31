@@ -199,6 +199,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
             selectedEdge={edgeParam}
             notes={notes}
             debt={overlay ? debtBands : undefined}
+            zoom
           />
           <Legend part={part} nodes={nodes} modes={modes} />
           {overlay && part.elements.some((id) => debtBands.has(id)) && <p className="muted">Darker means a wider reach and less shown so far. Answering questions and guessing decisions lightens it.</p>}
