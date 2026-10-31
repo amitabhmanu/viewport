@@ -12,7 +12,7 @@ claude --plugin-dir .
 
 The repo already holds Viewport's model of itself (`.viewport/model.json`), an empty ledger and a config scoped to `packages/`. Inside Claude Code, `/viewport:status` shows the model and `/viewport:open` opens the viewer. Background explainer and grader runs cost tokens. Set `VIEWPORT_NO_JOBS=1` to pause them.
 
-Rebuild with `pnpm build` after pulling changes to the plugin itself. The session keeps using the built hooks and daemon until you restart it.
+Rebuild with `pnpm build` after pulling changes to the plugin itself. The session keeps using the built hooks until you restart it, and the restart also replaces the daemon if it is running an older build.
 
 ## The routine
 

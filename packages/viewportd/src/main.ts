@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { ensureDaemon, isHealthy, readLock, releaseLock, stopDaemon, viewerUrl, writeLock } from "./lock.js";
+import { daemonBuild, ensureDaemon, isCurrent, isHealthy, readLock, releaseLock, stopDaemon, viewerUrl, writeLock } from "./lock.js";
 import { startDaemon } from "./server.js";
 
 const HOUR = 60 * 60 * 1000;
@@ -33,7 +33,11 @@ switch (command) {
   case "serve": {
     // A second daemon for the same repo steps aside for the first.
     const existing = await readLock(root);
-    if (existing !== undefined && existing.pid !== process.pid && (await isHealthy(existing))) process.exit(0);
+    if (existing !== undefined && existing.pid !== process.pid && (await isHealthy(existing))) {
+      if (isCurrent(existing, fileURLToPath(import.meta.url))) process.exit(0);
+      // An older build is still running: replace it.
+      await stopDaemon(root);
+    }
     const daemon = await startDaemon(root, {
       ...(values.port !== undefined ? { port: Number(values.port) } : {}),
       webRoot: WEB_ROOT,
@@ -42,7 +46,14 @@ switch (command) {
       // Background jobs run Claude and cost tokens; VIEWPORT_NO_JOBS turns them off.
       ...(process.env.VIEWPORT_NO_JOBS ? {} : { worker: { explainFiles: EXPLAINER, gradeFiles: GRADER } }),
     });
-    await writeLock({ pid: process.pid, port: daemon.port, token: daemon.token, root, startedAt: new Date().toISOString() });
+    await writeLock({
+      pid: process.pid,
+      port: daemon.port,
+      token: daemon.token,
+      root,
+      startedAt: new Date().toISOString(),
+      build: daemonBuild(fileURLToPath(import.meta.url)),
+    });
     const shutdown = async () => {
       await releaseLock(root);
       await daemon.close();

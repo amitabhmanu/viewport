@@ -235,6 +235,9 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .digest ul { margin: 4px 0 0; padding-left: 18px; }
 .one-way-nudge { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--stale); border-left-width: 4px; border-radius: 6px; }
 .one-way-nudge ul { margin: 4px 0 0; padding-left: 18px; }
+.job-problem { margin: 0 0 12px; padding: 10px 14px; border: 1px solid var(--stale); border-left-width: 4px; border-radius: 6px; }
+.job-problem p { margin: 0 0 6px; }
+.job-problem pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; margin: 6px 0 0; max-height: 12em; overflow: auto; }
 .nav-count { margin-left: 5px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--stale); color: var(--surface); }
 .debt-list { list-style: none; padding: 0; margin: 0; }
 .debt-list li { padding: 6px 0; border-bottom: 1px solid var(--line); }

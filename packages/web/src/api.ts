@@ -1,4 +1,4 @@
-import type { AreaLevel, AskQuery, Calibration, ChangesSince, Comparison, ComprehensionDebt, Digest, ImpactResult, Decision, GradedAnswer, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { AreaLevel, AskQuery, Calibration, ChangesSince, Comparison, ComprehensionDebt, Digest, ImpactResult, Decision, GradedAnswer, Job, JobHealth, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -68,6 +68,7 @@ export const api = {
   salience: () => call<{ familiarity: Record<string, number>; salience: Record<string, number> }>("/api/salience"),
   calibration: () => call<Calibration>("/api/calibration"),
   jobs: () => call<Job[]>("/api/jobs"),
+  jobHealth: () => call<JobHealth>("/api/job-health"),
   pins: () => call<Pin[]>("/api/pins"),
   pin: (title: string, query: AskQuery) => call<Pin>("/api/pins", { method: "POST", body: JSON.stringify({ title, query }) }),
   unpin: (id: number) => call<{ ok: true }>(`/api/pins?${q({ id: String(id) })}`, { method: "DELETE" }),
