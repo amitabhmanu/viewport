@@ -1,7 +1,7 @@
 import type { Change, Level, Model, ModelEdge, ModelNode, ViewEdge, ViewEdgeKind } from "@viewport/core";
 import { type MouseEvent, useMemo } from "react";
 import { api } from "./api.js";
-import { askHref } from "./ask.js";
+import { CHANGEABLE, FAILABLE, askHref, askSubject } from "./ask.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Diagram } from "./Diagram.js";
 import { FlagBox, useFlags } from "./Flags.js";
@@ -22,6 +22,7 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
 
   const model = useLoad(api.model, [live.model]);
   const parts = useLoad(() => api.view(view, level), [view, level, live.model]);
+  const pins = useLoad(api.pins, [live.state]);
 
   const nodes = useMemo(() => new Map((model.data?.nodes ?? []).map((n) => [n.id, n])), [model.data]);
   const modes = useMemo(
@@ -65,6 +66,12 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
   const href = (to: { view?: string; level?: Level; focus?: string | undefined; part?: number | undefined; edge?: string | undefined }) =>
     mapHref(to.view ?? view, { level: to.level ?? level, focus: "focus" in to ? to.focus : focus, part: "part" in to ? to.part : index + 1, edge: to.edge });
   const viewEdge = edgeParam === undefined ? undefined : part.edges.find((e) => `${e.kind}:${e.from}->${e.to}` === edgeParam);
+  // A pinned question about a part shown here, or about the part this view looks inside, becomes one of this area's views.
+  const shown = new Set([...part.elements, viewSubject(view)]);
+  const pinnedHere = (pins.data ?? []).filter((p) => {
+    const subject = askSubject(p.query);
+    return subject !== undefined && shown.has(subject);
+  });
 
   const openStub = async (id: string) => {
     const target = part.continuesIn[id];
@@ -113,6 +120,25 @@ export function MapPage({ params, go }: { params: URLSearchParams; go: (to: stri
           ))}
         </div>
       </div>
+      {pinnedHere.length > 0 && (
+        <p className="pinned-here">
+          Pinned here:{" "}
+          {pinnedHere.map((p, i) => (
+            <span key={p.id}>
+              {i > 0 && " · "}
+              <a
+                href={askHref(p.query)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  go(askHref(p.query));
+                }}
+              >
+                {p.title}
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
 
       <div className="map-body">
         <div className="canvas">
@@ -249,6 +275,16 @@ function NodePanel({
               What it depends on
             </a>
           </>
+        )}
+        {FAILABLE.has(node.kind) && (
+          <a className="button" href={askHref({ q: "fails", node: node.id })} onClick={follow}>
+            What if it fails
+          </a>
+        )}
+        {CHANGEABLE.has(node.kind) && (
+          <a className="button" href={askHref({ q: "changes", node: node.id })} onClick={follow}>
+            What if it changes
+          </a>
         )}
       </div>
       {node.kind === "entity" && <p className={node.sensitivity === "pii" || node.sensitivity === "secret" ? "warn" : "muted"}>{SENSITIVITY[node.sensitivity]}</p>}

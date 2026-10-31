@@ -1,6 +1,6 @@
 import type { Change, Level, ModelNode, SplitView } from "@viewport/core";
 import { useEffect, useState } from "react";
-import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, subtitle } from "./labels.js";
+import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, arrowText, subtitle } from "./labels.js";
 import { type Layout, layout, syncMarker } from "./layout.js";
 
 interface Props {
@@ -37,8 +37,12 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
   return (
     <svg className="diagram" viewBox={`0 0 ${laid.width} ${laid.height}`} width={laid.width} height={laid.height} role="img" aria-label={part.title}>
       <defs>
-        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        {/* Sized in the diagram's own units, so a thicker line keeps the same head. */}
+        <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="10.5" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" className="arrowhead" />
+        </marker>
+        <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="10.5" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" className="arrowhead accent" />
         </marker>
       </defs>
       {laid.routes.map((r) => {
@@ -53,9 +57,8 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
               data-edge={r.id}
               className={`edge ${r.kind}${mode ? ` ${mode}` : ""}${fresh ? " fresh" : ""}${lit ? " lit" : ""}`}
               points={points}
-              markerEnd="url(#arrow)"
+              markerEnd={lit || fresh ? "url(#arrow-accent)" : "url(#arrow)"}
             />
-            {r.label && r.points.length > 1 && <EdgeLabel text={r.label} points={r.points} />}
             {onSelectEdge && (
               <polyline
                 className="edge-hit"
@@ -130,6 +133,11 @@ export function Diagram({ part, nodes, modes, level, changed, selected, onSelect
           </g>
         );
       })}
+      {/* Last, so no line or box covers the text. */}
+      {laid.routes.map((r) => {
+        const text = arrowText(r.kind, r.label);
+        return text && r.points.length > 1 ? <EdgeLabel key={r.id} text={text} points={r.points} /> : null;
+      })}
     </svg>
   );
 }
@@ -139,10 +147,11 @@ function markerTitle(kind: ModelNode["kind"] | undefined, marker: "stale" | "unv
   return marker === "stale" ? "Changed in the code since it was modeled" : "Not yet checked against the code";
 }
 
-/** A branch condition, written on the arrow's longest segment. */
+/** Text on an arrow, beside its longest segment if that runs down, below it if across. */
 function EdgeLabel({ text, points }: { text: string; points: { x: number; y: number }[] }) {
   let best = 0;
   let at = { x: points[0]!.x, y: points[0]!.y };
+  let across = false;
   for (let i = 1; i < points.length; i++) {
     const a = points[i - 1]!;
     const b = points[i]!;
@@ -150,10 +159,11 @@ function EdgeLabel({ text, points }: { text: string; points: { x: number; y: num
     if (length > best) {
       best = length;
       at = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      across = a.y === b.y;
     }
   }
   return (
-    <text className="edge-label" x={at.x + 6} y={at.y} dominantBaseline="middle">
+    <text className="edge-label" x={across ? at.x : at.x + 6} y={across ? at.y + 9 : at.y} textAnchor={across ? "middle" : "start"} dominantBaseline="middle">
       {clip(text, 28)}
     </text>
   );

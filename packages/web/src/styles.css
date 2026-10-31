@@ -107,6 +107,7 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .edge.uses { stroke-dasharray: 1 0; opacity: .8; }
 .edge.lit { stroke: var(--accent); stroke-width: 2.5; }
 .arrowhead { fill: var(--edge); }
+.arrowhead.accent { fill: var(--accent); }
 .node { cursor: pointer; outline: none; }
 .node rect { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; }
 .node.system rect, .node.container rect { stroke: var(--ink); }
@@ -155,11 +156,21 @@ button.link { border: 0; padding: 0; background: none; color: var(--accent); }
 .node.runtime rect { stroke: var(--ink); stroke-width: 2; }
 .node .note { fill: var(--muted); font-size: 11px; font-weight: 600; }
 .node .note.gap, .node.assumption .note { fill: var(--stale); }
-.edge.next { stroke: var(--ink); }
+.edge.next:not(.lit, .fresh) { stroke: var(--ink); }
 .edge.constrained_by, .edge.assumes { stroke-dasharray: 2 3; }
 .edge.reads { stroke-dasharray: 6 4; }
 .edge.covers { stroke-dasharray: 1 3; }
-.edge-label { fill: var(--muted); font-size: 11px; }
+.edge-label { fill: var(--muted); font-size: 11px; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; pointer-events: none; }
+
+/* What-if, comparisons and pins (Phase 9). */
+.impact { margin: 0 0 12px; padding-left: 18px; }
+.follow-up { margin-top: 16px; padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+.option-cards { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.option-cards li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+.option-cards li.chosen { border-color: var(--accent); }
+.option-cards strong { margin-right: 8px; }
+.option-cards p { margin: 6px 0 0; color: var(--muted); }
+.pinned-here { margin: 0; padding: 6px 16px; font-size: 13px; color: var(--muted); border-bottom: 1px solid var(--line); }
 .node .badge { fill: var(--accent); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 
 a.button { display: inline-block; text-decoration: none; color: inherit; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; }

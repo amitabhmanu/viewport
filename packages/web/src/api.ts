@@ -1,4 +1,4 @@
-import type { AskQuery, Calibration, ChangesSince, Decision, GradedAnswer, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { AskQuery, Calibration, ChangesSince, Comparison, ImpactResult, Decision, GradedAnswer, Job, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -56,6 +56,10 @@ export const api = {
     const params = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, String(v)]));
     return call<Subgraph>(`/api/${kind}?${q({ ...params, ...(quiet ? { quiet: "1" } : {}) })}`);
   },
+  impact: (kind: "fails" | "changes", node: string, quiet = false) => call<ImpactResult>(`/api/impact?${q({ q: kind, node, ...(quiet ? { quiet: "1" } : {}) })}`),
+  revisions: () => call<{ current: number; kept: number[] }>("/api/revisions"),
+  compare: (from: number, to: number | undefined, quiet = false) =>
+    call<Comparison>(`/api/compare?${q({ from: String(from), ...(to !== undefined ? { to: String(to) } : {}), ...(quiet ? { quiet: "1" } : {}) })}`),
   predictions: () => call<Prediction[]>("/api/predictions"),
   predict: (decisionId: string, guess?: string) => call<Prediction>("/api/predictions", { method: "POST", body: JSON.stringify({ decisionId, ...(guess !== undefined ? { guess } : {}) }) }),
   quiz: () => call<QuizItem[]>("/api/quiz"),

@@ -62,6 +62,20 @@ describe("API", () => {
     expect(await (await api("/api/verify")).json()).toMatchObject({ unclaimed: [], missingDependencies: [] });
   });
 
+  it("answers what-if questions and compares revisions", async () => {
+    const fails = (await (await api("/api/impact?q=fails&node=app.payments")).json()) as { effect: Record<string, string> };
+    expect(fails.effect).toMatchObject({ "app.payments": "fails", "app.orders": "down", "app.api": "down" });
+    expect((await api("/api/impact?q=changes&node=app.api")).status).toBe(400);
+    expect((await api("/api/impact?q=trace&node=app.api")).status).toBe(400);
+
+    await writeModelFromAgent(root, { ...SHOP, nodes: SHOP.nodes.map((n) => (n.id === "app.api" ? { ...n, role: "HTTP routes" } : n)) });
+    expect(await (await api("/api/revisions")).json()).toEqual({ current: 2, kept: [1, 2] });
+    const diff = (await (await api("/api/compare?from=1")).json()) as { from: number; to: number; changes: { subject: string }[] };
+    expect(diff).toMatchObject({ from: 1, to: 2, changes: [{ subject: "app.api", change: "changed" }] });
+    expect((await api("/api/compare?from=99")).status).toBe(404);
+    expect((await api("/api/compare")).status).toBe(400);
+  });
+
   it("explains bad requests", async () => {
     const res = await api("/api/node?id=nope");
     expect(res.status).toBe(400);
