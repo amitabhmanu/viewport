@@ -5,7 +5,7 @@ import { readConfig } from "./config-store.js";
 import { stableStringify, writeFileAtomic } from "./fsutil.js";
 import { readModel, writeModel } from "./model-store.js";
 import { viewportPaths } from "./paths.js";
-import { Config, Model, type ModelNode, emptyModel } from "./schema.js";
+import { Config, MODEL_VERSION, Model, type ModelNode, emptyModel } from "./schema.js";
 import { applyReport, coverage, filesByComponent, fingerprintFiles, headCommit, listSources, verify, type VerificationReport } from "./verify/index.js";
 
 const DEFAULT_IGNORE = [
@@ -93,7 +93,7 @@ export async function writeModelFromAgent(root: string, incoming: unknown, revie
   const config = await readConfig(paths.config);
   const previous = await readModel(paths.model);
   const before = new Map(previous.nodes.map((n) => [n.id, n]));
-  const draft = Model.parse({ ...(incoming as object), version: 1, revision: previous.revision });
+  const draft = Model.parse({ ...(incoming as object), version: MODEL_VERSION, revision: previous.revision });
 
   const files = await listSources(root, config);
   const owned = filesByComponent(coverage(files, draft).owner);

@@ -1,7 +1,7 @@
 import { readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { parseFile, stableStringify, writeFileAtomic } from "./fsutil.js";
-import { Model, NodeKind, edgeKey, emptyModel } from "./schema.js";
+import { MODEL_VERSION, Model, NodeKind, edgeKey, emptyModel } from "./schema.js";
 
 const KIND_ORDER = NodeKind.options;
 
@@ -32,7 +32,7 @@ export function serializeModel(model: Model): string {
 
 /** Validates, bumps the revision and writes atomically, keeping a local snapshot. Returns what was written. */
 export async function writeModel(path: string, model: Model): Promise<Model> {
-  const next = canonicalize(Model.parse({ ...model, revision: model.revision + 1 }));
+  const next = canonicalize(Model.parse({ ...model, version: MODEL_VERSION, revision: model.revision + 1 }));
   await writeFileAtomic(path, stableStringify(next));
   await snapshotModel(path, next);
   return next;

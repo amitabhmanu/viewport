@@ -74,6 +74,16 @@ export function blastRadius(model: Model, affects: string[]): string[] {
         return graph.children(id).flatMap((c) => graph.children(c));
       case "external":
         return graph.incoming(id, "depends_on").flatMap((e) => components(e.from));
+      case "process":
+        return [...graph.incoming(id, "implements").map((e) => e.from), ...graph.children(id).flatMap(components)];
+      case "step":
+        return graph.incoming(id, "implements").map((e) => e.from);
+      case "rule":
+        return graph.incoming(id, "constrained_by").flatMap((e) => components(e.from));
+      case "entity":
+        return (["owns", "reads", "writes"] as const).flatMap((k) => graph.incoming(id, k)).flatMap((e) => components(e.from));
+      case "runtime":
+        return graph.incoming(id, "runs_on").flatMap((e) => components(e.from));
       default:
         return [];
     }

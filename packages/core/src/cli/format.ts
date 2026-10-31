@@ -24,6 +24,7 @@ export function formatReport(report: VerificationReport, limit = 10): string {
         plural(report.missingDependencies.length, "missing dependency", "missing dependencies"),
         plural(report.unsupportedEdges.length, "unsupported edge"),
         plural(report.staleComponents.length, "component", "components") + " changed since modeled",
+        plural(report.emptyTests.length, "empty test group"),
       ].join(", "),
   ];
   const list = <T>(label: string, items: T[], show: (t: T) => string) => {
@@ -38,6 +39,7 @@ export function formatReport(report: VerificationReport, limit = 10): string {
   });
   list("unsupported", report.unsupportedEdges, (k) => k);
   list("changed since modeled", report.staleComponents, (id) => id);
+  list("empty test group", report.emptyTests, (id) => id);
   for (const note of report.notes) lines.push(`  note: ${note}`);
   return lines.join("\n");
 }

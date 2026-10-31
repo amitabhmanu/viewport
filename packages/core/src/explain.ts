@@ -42,14 +42,20 @@ const nodeHash = (n: ModelNode) => hash(content(n));
 const decisionHash = (d: Decision) => hash(stableStringify(d));
 
 /**
+ * Node kinds the explainer writes takeaways and questions for: the ones the viewer
+ * draws. Decision nodes are covered by their ledger entries.
+ */
+export const EXPLAINED_KINDS: ReadonlySet<ModelNode["kind"]> = new Set(["system", "actor", "external", "container", "component"]);
+
+/**
  * Nodes and decisions that are new or changed since they were last explained, and not
- * already waiting in an explain job. Decision nodes are covered by their ledger entries.
+ * already waiting in an explain job.
  */
 export function explainDue(db: DatabaseSync, model: Model, ledger: Decision[]): string[] {
   const done = new Map((db.prepare("SELECT subject, hash FROM explained").all() as { subject: string; hash: string }[]).map((r) => [r.subject, r.hash]));
   const queued = new Set(openJobs(db, "explain").flatMap((j) => (j.payload.subjects as string[] | undefined) ?? []));
   const due: string[] = [];
-  for (const n of model.nodes) if (n.kind !== "decision" && done.get(n.id) !== nodeHash(n) && !queued.has(n.id)) due.push(n.id);
+  for (const n of model.nodes) if (EXPLAINED_KINDS.has(n.kind) && done.get(n.id) !== nodeHash(n) && !queued.has(n.id)) due.push(n.id);
   for (const d of ledger) if (done.get(d.id) !== decisionHash(d) && !queued.has(d.id)) due.push(d.id);
   return due;
 }
