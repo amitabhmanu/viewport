@@ -14,7 +14,8 @@
     "build": "pnpm -r build",
     "eval": "tsx packages/eval/src/run.ts",
     "eval:grader": "tsx packages/eval/src/grader.ts",
-    "eval:gate4": "tsx packages/eval/src/gate4.ts"
+    "eval:gate4": "tsx packages/eval/src/gate4.ts",
+    "demo:video": "tsx packages/web/demo/record.ts demo-out"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
