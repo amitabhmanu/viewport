@@ -194,7 +194,7 @@ describe("viewer", () => {
   it("flags an arrow and a decision, and shows Claude's answers where they were asked", async () => {
     await page.goto(`http://127.0.0.1:${daemon.port}/map?view=components:app&level=complex`);
     // Arrows bend, so the centre of their box is often off the line; select by keyboard.
-    await page.getByRole("button", { name: "Dependency orders to payments" }).focus();
+    await page.getByRole("button", { name: "Dependency: orders to payments" }).focus();
     await page.keyboard.press("Enter");
     await page.locator(".panel h2", { hasText: "orders → payments" }).waitFor();
     await page.getByLabel("Question for Claude").fill("Why call payments synchronously?");
