@@ -24,3 +24,4 @@ export * from "./salience.js";
 export * from "./calibration.js";
 export * from "./stats.js";
 export * from "./adapt.js";
+export * from "./gates.js";

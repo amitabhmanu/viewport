@@ -3,9 +3,9 @@ import { cp, mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { claimJob, enqueueJob, finishJob, initWorkspace, openState, raiseFlag, readModel, recordDecision, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
+import { claimJob, enqueueJob, finishJob, gateCursor, initWorkspace, updateGateSettings, openState, raiseFlag, readModel, recordDecision, resolveFlag, unresolvedFlags, viewportPaths, writeModelFromAgent } from "@viewport/core";
 import { beforeEach, describe, expect, it } from "vitest";
-import { DECISION_RULE, type HookInput, findWorkspace, jobProblem, postToolUse, sessionStart, stop, subagentStop } from "./hooks.js";
+import { DECISION_RULE, type HookInput, findWorkspace, jobProblem, postToolUse, preToolUse, sessionStart, stop, subagentStop, userPromptSubmit } from "./hooks.js";
 
 const FIXTURE = fileURLToPath(new URL("../../../fixtures/py-shop", import.meta.url));
 const COMPONENTS = ["api", "orders", "payments", "notifications", "storage"];
@@ -239,5 +239,69 @@ describe("subagentStop", () => {
     const after = await readModel(viewportPaths(root).model);
     expect(after.revision).toBe(before + 1);
     expect(after.nodes.find((n) => n.id === "app.orders")?.sync).toBe("stale");
+  });
+});
+
+describe("catch-up gates", () => {
+  async function reachMilestone() {
+    const db = openState(viewportPaths(root).stateDb);
+    gateCursor(db, new Date(Date.now() - 60_000));
+    db.close();
+    for (const n of [1, 2, 3]) {
+      await recordDecision(root, {
+        title: `Choice ${n}`,
+        options: [
+          { name: "A", tradeoff: "Simple" },
+          { name: "B", tradeoff: "Flexible" },
+        ],
+        chosen: "A",
+        why: "Fewer parts",
+        reversibility: "easy",
+        affects: ["app.storage"],
+        assumptions: [],
+      });
+    }
+  }
+  const denied = (out: Record<string, unknown> | undefined) => (out?.hookSpecificOutput as { permissionDecision?: string } | undefined)?.permissionDecision === "deny";
+  const prompt = (text: string): HookInput => ({ session_id: "s1", cwd: root, prompt: text });
+
+  it("opens mid-turn, lets Claude finish a few edits, then refuses more", async () => {
+    await reachMilestone();
+    expect(await preToolUse(root, edit("src/shop/orders/service.py"))).toBeUndefined();
+    const note = context(await postToolUse(root, edit("src/shop/orders/service.py")));
+    expect(note).toContain("catch-up gate");
+    expect(note).toContain("D-00");
+    for (const _ of [1, 2]) {
+      expect(await preToolUse(root, edit("src/shop/orders/service.py"))).toBeUndefined();
+      await postToolUse(root, edit("src/shop/orders/service.py"));
+    }
+    expect(denied(await preToolUse(root, edit("src/shop/orders/service.py")))).toBe(true);
+    // Another session gets no grace, and the model can always be updated.
+    expect(denied(await preToolUse(root, edit("src/shop/api/routes.py", "s2")))).toBe(true);
+    expect(await preToolUse(root, edit(".viewport/model.json"))).toBeUndefined();
+  });
+
+  it("tells the developer at the end of the turn and holds prompts until they catch up or skip", async () => {
+    await reachMilestone();
+    const out = await stop(root, { session_id: "s1", cwd: root });
+    expect(out?.decision).toBeUndefined();
+    expect(out?.systemMessage).toContain("Claude is paused");
+    expect(out?.systemMessage).toContain("/viewport:gates off");
+    const held = await userPromptSubmit(root, prompt("add refunds"));
+    expect(held).toMatchObject({ decision: "block" });
+    expect(await userPromptSubmit(root, prompt("/viewport:gates skip"))).toBeUndefined();
+    const db = openState(viewportPaths(root).stateDb);
+    db.prepare("UPDATE gates SET closed_at = ?, outcome = 'skipped'").run(new Date().toISOString());
+    db.close();
+    expect(await userPromptSubmit(root, prompt("add refunds"))).toBeUndefined();
+    expect(await preToolUse(root, edit("src/shop/orders/service.py"))).toBeUndefined();
+  });
+
+  it("does nothing when switched off", async () => {
+    await updateGateSettings(viewportPaths(root).config, { enabled: false });
+    await reachMilestone();
+    expect(context(await postToolUse(root, edit("src/shop/orders/service.py")))).not.toContain("catch-up gate");
+    expect(await stop(root, { session_id: "s1", cwd: root })).toBeUndefined();
+    expect(await userPromptSubmit(root, prompt("go on"))).toBeUndefined();
   });
 });

@@ -149,6 +149,17 @@ describe("viewport CLI", () => {
     expect(bad.err).toContain("unknown node 'missing'");
   });
 
+  it("gates shows, switches and skips catch-up gates", async () => {
+    await cli(["init"]);
+    expect((await cli(["gates"])).out).toContain("Catch-up gates are on");
+    const off = await cli(["gates", "off"]);
+    expect(off.out).toContain("Catch-up gates are off");
+    expect(JSON.parse(await readFile(join(root, ".viewport", "config.json"), "utf8")).gates).toMatchObject({ enabled: false, decisions: 3 });
+    expect(JSON.parse((await cli(["gates", "on", "--json"])).out)).toMatchObject({ enabled: true, gate: null });
+    expect((await cli(["gates", "skip"])).out).toContain("No gate was open to skip");
+    expect((await cli(["gates", "sideways"])).code).toBe(1);
+  });
+
   it("prints usage for unknown commands", async () => {
     const r = await cli(["frobnicate"]);
     expect(r.code).toBe(2);
