@@ -7,6 +7,11 @@ import { extname, join, normalize, sep } from "node:path";
 import {
   AskQuery,
   ConfigMissingError,
+  currentGate,
+  gatesOff,
+  listGates,
+  skipGate,
+  updateGateSettings,
   type Level,
   ModelGraph,
   QueryError,
@@ -191,6 +196,29 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
           logEvent(db, "predict", decisionId, { guess: guess ?? null, correct: prediction.correct ?? null });
           return prediction;
         });
+      }
+      case "GET /api/gate": {
+        const [config, model, ledger] = await Promise.all([readConfig(paths.config), readModel(paths.model), readLedger(paths.ledger)]);
+        return withState((db) => {
+          const gate = currentGate(db, model, ledger, config.gates);
+          const last = listGates(db, model, ledger, config.gates, 1)[0];
+          return {
+            enabled: config.gates.enabled,
+            active: !gatesOff(config.gates),
+            settings: config.gates,
+            gate: gate !== undefined && gate.closedAt === undefined ? gate : null,
+            last: last?.closedAt !== undefined ? last : null,
+          };
+        });
+      }
+      case "POST /api/gate": {
+        const body = JSON.parse(await readBody(req)) as { enabled?: unknown; skip?: unknown };
+        if (body.skip !== true && typeof body.enabled !== "boolean") throw new HttpError(400, "send enabled: true or false, or skip: true");
+        // Switching off also lets go of an open gate, as `viewport gates off` does.
+        if (body.skip === true || body.enabled === false) withState((db) => skipGate(db));
+        if (typeof body.enabled === "boolean") await updateGateSettings(paths.config, { enabled: body.enabled });
+        withState((db) => logEvent(db, "gate", null, body.skip === true ? { skip: true } : { enabled: body.enabled }));
+        return { ok: true };
       }
       case "GET /api/quiz":
         return withState((db) => dueQuiz(db));
@@ -382,7 +410,8 @@ export async function startDaemon(root: string, options: DaemonOptions = {}): Pr
       }),
     );
   };
-  watchDir(paths.dir, (f) => (f.startsWith("model.json") ? "model" : f.startsWith("ledger.jsonl") ? "ledger" : undefined));
+  // config.json holds the catch-up gate switch, which the viewer shows with the rest of the local state.
+  watchDir(paths.dir, (f) => (f.startsWith("model.json") ? "model" : f.startsWith("ledger.jsonl") ? "ledger" : f.startsWith("config.json") ? "state" : undefined));
   watchDir(paths.localDir, (f) => (f.startsWith("state.db") ? "state" : undefined));
   const worker = options.worker ? startWorker(root, options.worker) : undefined;
 

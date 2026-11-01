@@ -19,7 +19,7 @@ import {
 } from "./gates.js";
 import { applyGrade } from "./grade.js";
 import { claimJob, enqueueJob, finishJob } from "./jobs.js";
-import { answerQuiz } from "./quiz.js";
+import { answerQuiz, dueQuiz } from "./quiz.js";
 import { GateSettings, type Decision } from "./schema.js";
 import { openState } from "./state.js";
 import { completeShopModel, tempDir } from "./test-helpers.js";
@@ -126,6 +126,15 @@ describe("passing a gate", () => {
     expect(hasOpenGate(db)).toBe(false);
     expect(currentGate(db, model, ledger, SETTINGS, at(10))).toBeUndefined();
     expect(listGates(db, model, ledger, SETTINGS)[0]).toMatchObject({ outcome: "passed" });
+  });
+
+  it("keeps an open gate's questions out of the daily quiz until it closes", () => {
+    const { db, model } = setup();
+    const ledger = [decision(1, 1), decision(2, 2), decision(3, 3)];
+    checkMilestone(db, model, ledger, SETTINGS, "s1", at(4));
+    expect(dueQuiz(db, at(5))).toEqual([]);
+    skipGate(db, at(5));
+    expect(dueQuiz(db, at(5)).length).toBeGreaterThan(0);
   });
 
   it("releases the gate when every answer is in but background jobs keep failing", () => {

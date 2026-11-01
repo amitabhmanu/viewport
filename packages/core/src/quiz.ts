@@ -71,7 +71,10 @@ export function dueQuiz(db: DatabaseSync, now = new Date(), perDay = QUIZ_PER_DA
   const left = Math.max(0, perDay - answered);
   if (left === 0) return [];
   const stretched = (db.prepare("SELECT COUNT(*) AS n FROM quiz_answers a JOIN quiz_items i ON i.id = a.item_id WHERE a.at >= ? AND i.stretch = 1").get(startOfDay(now).toISOString()) as { n: number }).n;
-  const rows = db.prepare("SELECT * FROM quiz_items WHERE due_at <= ? ORDER BY due_at, id").all(now.toISOString()) as unknown as ItemRow[];
+  // A catch-up gate's questions show in its own panel while the gate is open, then join the ladder.
+  const rows = db
+    .prepare("SELECT * FROM quiz_items WHERE due_at <= ? AND (gate_id IS NULL OR gate_id NOT IN (SELECT id FROM gates WHERE closed_at IS NULL)) ORDER BY due_at, id")
+    .all(now.toISOString()) as unknown as ItemRow[];
   let stretchLeft = stretched > 0 ? 0 : 1;
   return rows
     .filter((r) => {

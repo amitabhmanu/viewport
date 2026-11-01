@@ -8,7 +8,12 @@ import {
   answerQuiz,
   appendDecision,
   applyGrade,
+  checkMilestone,
+  gateCursor,
   initWorkspace,
+  nextDecisionId,
+  readConfig,
+  readLedger,
   markAllSeen,
   openState,
   raiseFlag,
@@ -186,4 +191,66 @@ export async function addSearch(root: string): Promise<void> {
     { kind: "depends_on", from: "app.api", to: "app.search", mode: "sync", source: "agent", sync: "unverified" } as Model["edges"][number],
   );
   await writeModelFromAgent(root, model);
+}
+
+/**
+ * A milestone: Claude logs three refund decisions in a row, which opens a catch-up gate.
+ * Returns the ids of the gate's subjects.
+ */
+export async function openCatchUpGate(root: string): Promise<string[]> {
+  const paths = viewportPaths(root);
+  const db = openState(paths.stateDb);
+  try {
+    gateCursor(db, new Date(Date.now() - 60_000));
+    const existing = await readLedger(paths.ledger);
+    const refunds: Omit<DecisionInput, "id" | "at">[] = [
+      {
+        title: "Refund through the original payment",
+        options: [
+          { name: "Original payment", tradeoff: "Money goes back where it came from, but needs the processor's refund call" },
+          { name: "Store credit", tradeoff: "No processor call, but customers can't get cash back" },
+        ],
+        chosen: "Original payment",
+        why: "Customers expect their money back on the card they paid with, and the processor already supports refunds by charge id.",
+        reversibility: "costly",
+        blastRadius: 2,
+        affects: ["app.payments", "app.orders"],
+      },
+      {
+        title: "Only shipped orders need a refund; others are cancelled",
+        options: [
+          { name: "Cancel before shipping", tradeoff: "Simple, no money moves twice, but two paths to explain" },
+          { name: "Always refund", tradeoff: "One path, but charges and refunds orders that never left" },
+        ],
+        chosen: "Cancel before shipping",
+        why: "An unshipped order can be voided before settlement, which is free; a refund costs a fee.",
+        reversibility: "easy",
+        blastRadius: 1,
+        affects: ["app.orders"],
+      },
+      {
+        title: "Announce refunds on the notifications queue",
+        options: [
+          { name: "Queue", tradeoff: "Same path as order emails, but sends can lag" },
+          { name: "Send inline", tradeoff: "Immediate, but a slow mail server blocks the refund" },
+        ],
+        chosen: "Queue",
+        why: "The refund must not wait on email, the same reason order confirmations go through the queue.",
+        reversibility: "easy",
+        blastRadius: 2,
+        affects: ["app.notifications", "app.orders"],
+      },
+    ];
+    let ledger = existing;
+    for (const d of refunds) {
+      const id = nextDecisionId(ledger);
+      await appendDecision(paths.ledger, { ...d, id, at: new Date().toISOString() });
+      ledger = await readLedger(paths.ledger);
+    }
+    const config = await readConfig(paths.config);
+    const gate = checkMilestone(db, await readModel(paths.model), ledger, config.gates, "demo");
+    return gate?.subjects.map((s) => s.id) ?? [];
+  } finally {
+    db.close();
+  }
 }

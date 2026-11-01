@@ -320,3 +320,18 @@ button:disabled { opacity: .5; cursor: default; }
 .calibration-table { border-collapse: collapse; font-size: 14px; }
 .calibration-table th, .calibration-table td { text-align: left; padding: 2px 12px 2px 0; }
 .tag.familiar { border-color: #22a06b; color: #22a06b; }
+
+/* Catch-up gates */
+.catch-up { margin: 0 0 20px; padding: 4px 16px 12px; background: var(--surface); border: 1px solid var(--accent); border-left-width: 4px; border-radius: 10px; }
+.catch-up.done { padding: 10px 16px; border-color: #22a06b; }
+.catch-up.done p { margin: 0; }
+.catch-up .section-head { margin-top: 10px; }
+.gate-progress { height: 6px; background: var(--accent-soft); border-radius: 999px; overflow: hidden; margin: 4px 0 12px; }
+.gate-progress span { display: block; height: 100%; background: var(--accent); transition: width 0.3s; }
+.gate-item .familiarity { display: inline-block; vertical-align: middle; width: 60px; height: 4px; margin-left: 8px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.gate-item .familiarity span { display: block; height: 100%; background: var(--accent); }
+.gate-item.met { opacity: 0.75; }
+.tag.met { border-color: #22a06b; color: #22a06b; }
+.gate-item .retry { margin: 8px 0 -4px; }
+.gate-switch { margin: 28px 0 0; padding-top: 12px; border-top: 1px solid var(--line); }
+.gate-switch p { margin: 4px 0 8px; }

@@ -3,6 +3,7 @@ import { type MouseEvent, useState } from "react";
 import { api } from "./api.js";
 import { markSeen, useChanges } from "./changes.js";
 import { Calibration } from "./Calibration.js";
+import { CatchUpPanel, GateSwitch } from "./CatchUp.js";
 import { CHANGE_LABEL, EDGE_LABEL, KIND_LABEL, bySalience, changesByProcess, homeView, seenWith, toPredict } from "./labels.js";
 import { useLive, useLoad } from "./live.js";
 import { FLAG_STATUS } from "./Flags.js";
@@ -26,6 +27,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
   const calibration = useLoad(api.calibration, [live.state]);
   const debt = useLoad(api.debt, [live.model, live.state]);
   const digest = useLoad(api.digest, [live.ledger, live.state, live.model]);
+  const gate = useLoad(api.gate, [live.ledger, live.state, live.model]);
   const error = model.error ?? ledger.error ?? flags.error;
   if (error) return <p className="error">{error}</p>;
   if (!model.data) return <p className="muted page">Loading…</p>;
@@ -55,6 +57,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
     <section className="page narrow">
       <h1>Today</h1>
       {health.data && <JobProblem health={health.data} />}
+      {gate.data && ledger.data && predictions.data && <CatchUpPanel status={gate.data} ledger={ledger.data} predictions={predictions.data} />}
       <div className="tiles">
         {tiles.map(([label, n, href]) => (
           <a
@@ -177,6 +180,7 @@ export function TodayPage({ go }: { go: (to: string) => void }) {
         </>
       )}
       {calibration.data && <Calibration data={calibration.data} />}
+      {gate.data && <GateSwitch status={gate.data} />}
     </section>
   );
 }
