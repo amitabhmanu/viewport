@@ -1,13 +1,15 @@
 # Demo video
 
-`pnpm demo:video` records a captioned two-minute walkthrough of the viewer to
+`pnpm demo:video` records a captioned two-and-a-half-minute walkthrough of the viewer to
 `demo-out/viewport-demo.webm`. Run `pnpm build` first.
 
 It seeds a throwaway copy of the py-shop fixture (`seed.ts`) with the v2 model, five
 decisions, answered questions and a flag Claude has answered, starts a daemon with no
 background worker, and drives Chromium with a drawn cursor and caption bar
 (`record.ts`). Midway it adds a search component the way Claude would, to show the Map
-updating live.
+updating live. It ends with a catch-up gate: Claude logs three refund decisions
+(`openCatchUpGate` in `seed.ts`), and the walkthrough catches up on Today and shows
+the switch that turns gates off.
 
 To make an MP4 for sharing:
 

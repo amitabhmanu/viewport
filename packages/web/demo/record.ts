@@ -1,10 +1,10 @@
 import { mkdir, readdir, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openState, resolveFlag, unresolvedFlags, viewportPaths } from "@viewport/core";
+import { applyGrade, openState, readLedger, resolveFlag, unresolvedFlags, viewportPaths } from "@viewport/core";
 import { startDaemon } from "@viewport/viewportd";
 import { type Locator, type Page, chromium } from "playwright";
-import { addSearch, seedDemo } from "./seed.js";
+import { addSearch, openCatchUpGate, seedDemo } from "./seed.js";
 
 // Records a captioned walkthrough of the viewer to a .webm in the given directory.
 // Run after `pnpm build`: tsx demo/record.ts <outDir>
@@ -115,6 +115,21 @@ const node = (id: string) => page.locator(`[data-node="${id}"]`).first();
 const answerFlags = (answer: string) => {
   const db = openState(viewportPaths(root).stateDb);
   for (const f of unresolvedFlags(db)) resolveFlag(db, f.id, answer);
+  db.close();
+};
+
+/** What the developer sees in Claude Code when a gate holds their prompt (Viewport's own hook message). */
+const terminal = (lines: string[], note: string) => `<!doctype html><html><body style="margin:0;height:100vh;display:flex;flex-direction:column;gap:36px;align-items:center;justify-content:center;background:#faf9f7;font-family:Inter,system-ui,sans-serif">
+  <div style="width:1040px;background:#16161a;color:#e6e6e6;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.25);overflow:hidden">
+  <div style="padding:10px 16px;background:#24242a;color:#9a9aa3;font-size:14px">Claude Code · py-shop</div>
+  <pre style="margin:0;padding:22px 26px;font:17px/1.6 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap">${lines.join("\n")}</pre></div>
+  <div style="max-width:1000px;background:rgba(17,24,39,.92);color:#fff;font:500 21px/1.4 Inter,system-ui,sans-serif;padding:12px 22px;border-radius:10px">${note}</div></body></html>`;
+
+/** Grades the newest written answer right, as the background grader would. */
+const gradeLatest = () => {
+  const db = openState(viewportPaths(root).stateDb);
+  const { id } = db.prepare("SELECT MAX(id) AS id FROM quiz_answers").get() as { id: number };
+  applyGrade(db, id, { grade: "correct", feedback: "Yes: it charges and refunds cards, and orders can't take or refund money without it." });
   db.close();
 };
 
@@ -245,8 +260,58 @@ async function scene(p: Page) {
   await wait(3500);
   await caption("");
 
+  // Catch-up gate.
+  const subjects = await openCatchUpGate(root);
+  await p.setContent(
+    terminal([
+      "<span style='color:#9a9aa3'>&gt;</span> now let customers refund an order",
+      "",
+      "<span style='color:#7ea2f5'>●</span> Added refunds: payments.refund(), a shipped-order rule, and a refund email on the queue.",
+      "  Logged D-006, D-007 and D-008 in the Viewport ledger.",
+      "",
+      "<span style='color:#9a9aa3'>&gt;</span> great, now add partial refunds",
+      "<span style='color:#f0b35a'>Viewport: Claude is paused at a milestone until you catch up on the work so far (0 of 4 caught up).</span>",
+      "<span style='color:#f0b35a'>Answer the catch-up questions in the viewer's Today tab.</span>",
+      "<span style='color:#9a9aa3'>Skip this one with /viewport:gates skip, or switch gates off with /viewport:gates off.</span>",
+    ], "Optional catch-up gates: after a burst of work, Claude pauses until you've caught up."),
+  );
+  await wait(5500);
+  await p.goto(`${base}/?token=${daemon.token}`);
+  const gate = p.locator(".catch-up");
+  await gate.waitFor();
+  await caption("Today shows what to catch up on: the most important new decisions and parts.", 3200);
+  const ledger = await readLedger(viewportPaths(root).ledger);
+  for (const id of subjects) {
+    const item = gate.locator(`[data-gate-subject="${id}"]`);
+    if ((await item.count()) === 0) continue;
+    await scrollTo(item, 160);
+    const d = ledger.find((x) => x.id === id);
+    if (d !== undefined && (await item.locator(".predict").count()) > 0) {
+      await click(item.getByRole("button", { name: new RegExp(`^${d.chosen}`) }));
+    } else {
+      await caption("Answer in your own words; Claude grades it against the model.", 300);
+      await click(item.getByRole("radio", { name: "Sure", exact: true }));
+      await type(item.getByLabel("Your answer"), "It charges and refunds cards; without it orders can't take or return money");
+      await click(item.getByRole("button", { name: "Answer" }));
+      await wait(1200);
+      gradeLatest();
+      await caption("");
+    }
+    await gate.locator(`[data-gate-subject="${id}"]`).waitFor({ state: "detached" });
+    await wait(900);
+  }
+  await p.evaluate(() => window.scrollTo(0, 0));
+  await p.getByText("You're caught up.").waitFor();
+  await caption("Caught up: Claude carries on with your next prompt.", 3000);
+  // Room below the switch, so the caption bar doesn't cover it.
+  await p.evaluate(() => (document.body.style.paddingBottom = "260px"));
+  await scrollTo(p.locator(".gate-switch"), 420);
+  await moveTo(p.locator(".gate-switch").getByRole("button"));
+  await caption("Prefer to work without pauses? One switch turns gates off.", 3200);
+  await caption("");
+
   // End.
-  await p.setContent(card("Viewport", "Decisions, flags and spaced questions,<br>so you still know the system Claude built.", "Claude Code plugin · MCP · hooks · local viewer"));
+  await p.setContent(card("Viewport", "Decisions, flags, spaced questions and catch-up gates,<br>so you still know the system Claude built.", "Claude Code plugin · MCP · hooks · local viewer"));
   await wait(4000);
 }
 
