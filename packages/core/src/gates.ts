@@ -36,6 +36,8 @@ export interface GateSubject {
   answered: boolean;
   /** Answered and waiting for the grader. */
   grading: boolean;
+  /** Answers to the gate's question since it opened. */
+  answers: number;
 }
 
 export interface Gate {
@@ -206,6 +208,7 @@ function describe(db: DatabaseSync, model: Model, ledger: Decision[], row: GateR
       ...(decision ? { predicted: predictionFor(db, id) !== undefined } : {}),
       answered: given.length > 0,
       grading: given[0] !== undefined && given[0].grade === null,
+      answers: given.length,
     };
   });
   return {

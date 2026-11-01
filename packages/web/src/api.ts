@@ -1,4 +1,5 @@
 import type { AreaLevel, AskQuery, Calibration, ChangesSince, Comparison, ComprehensionDebt, Digest, ImpactResult, Decision, GradedAnswer, Job, JobHealth, Pin, Prediction, QuizItem, QuizResult, Subgraph, Flag, Level, Model, NodeDetail, SplitView } from "@viewport/core";
+import type { GateStatus } from "./CatchUp.js";
 
 /** The daemon's token arrives once in the URL; keep it for this tab and drop it from the address bar. */
 function readToken(): string {
@@ -77,6 +78,8 @@ export const api = {
   dismissLevel: (view: string) => call<{ ok: true }>("/api/levels", { method: "POST", body: JSON.stringify({ view, dismiss: true }) }),
   debt: () => call<ComprehensionDebt>("/api/debt"),
   digest: () => call<Digest>("/api/digest"),
+  gate: () => call<GateStatus>("/api/gate"),
+  setGate: (change: { enabled: boolean } | { skip: true }) => call<{ ok: true }>("/api/gate", { method: "POST", body: JSON.stringify(change) }),
   flag: (subject: string, text: string) => call<Flag>("/api/flags", { method: "POST", body: JSON.stringify({ subject, text }) }),
 };
 
