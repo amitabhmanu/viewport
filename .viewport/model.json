@@ -204,6 +204,13 @@
       "to": "d-016"
     },
     {
+      "from": "core.learn",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-017"
+    },
+    {
       "from": "core.model",
       "kind": "decided_by",
       "source": "agent",
@@ -288,6 +295,13 @@
       "to": "d-016"
     },
     {
+      "from": "hooks.events",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-017"
+    },
+    {
       "from": "mcp.server",
       "kind": "decided_by",
       "source": "agent",
@@ -300,6 +314,20 @@
       "source": "agent",
       "sync": "unverified",
       "to": "d-006"
+    },
+    {
+      "from": "plugin.commands",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-017"
+    },
+    {
+      "from": "plugin.hooks",
+      "kind": "decided_by",
+      "source": "agent",
+      "sync": "unverified",
+      "to": "d-017"
     },
     {
       "from": "plugin.skills",
@@ -826,11 +854,11 @@
       ],
       "role": "The entry point other packages import",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
-      "changedAt": "5ca8de037733095a4c75399bab96af3a867f9dbd",
-      "fingerprint": "sha256:63a5584ec5a627b893c23088056f8d3c",
+      "changedAt": "ec5735dfff9b0d369b2803cd6633b0fbbce3a668",
+      "fingerprint": "sha256:a86223f7520aaf604e8e3167e60fd8c9",
       "id": "core.cli",
       "kind": "component",
       "name": "Command line",
@@ -854,11 +882,11 @@
       ],
       "role": "Applies model edits and tracks what changed",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
-      "changedAt": "be868991516cec574accbe7680c734add14fab28",
-      "fingerprint": "sha256:e49c6ba8d2bb74cbb05f51a405b79400",
+      "changedAt": "ec5735dfff9b0d369b2803cd6633b0fbbce3a668",
+      "fingerprint": "sha256:6d44c41bc18e3c7e902b3225995d7e0d",
       "id": "core.learn",
       "kind": "component",
       "name": "Learning",
@@ -873,9 +901,10 @@
         "packages/core/src/jobs*.ts",
         "packages/core/src/asks*.ts",
         "packages/core/src/stats*.ts",
-        "packages/core/src/adapt*.ts"
+        "packages/core/src/adapt*.ts",
+        "packages/core/src/gates.ts"
       ],
-      "role": "Quizzes, grades and explains the model to the developer, and adapts levels, debt and the digest to them",
+      "role": "Quizzes, grades and explains the model to the developer, and adapts levels, debt and the digest to them; opens and checks catch-up gates at milestones",
       "source": "agent",
       "sync": "ok"
     },
@@ -899,7 +928,7 @@
       ],
       "role": "Defines the model schema and stores the model, ledger and local state",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "5ca8de037733095a4c75399bab96af3a867f9dbd",
@@ -912,7 +941,7 @@
       ],
       "role": "Answers graph questions and builds the views",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "f937f1750598d603e3658dfc37153235d0ad3abd",
@@ -925,7 +954,7 @@
       ],
       "role": "Checks the model against the code",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -970,11 +999,11 @@
       ],
       "role": "Defines the evaluation tasks and baseline answers",
       "source": "agent",
-      "sync": "stale"
+      "sync": "ok"
     },
     {
-      "changedAt": "be868991516cec574accbe7680c734add14fab28",
-      "fingerprint": "sha256:fd02e7497a96cd9bebf889c5ec1f95c6",
+      "changedAt": "ec5735dfff9b0d369b2803cd6633b0fbbce3a668",
+      "fingerprint": "sha256:a5fd742ee7f00cacd2dded9ab4325b85",
       "id": "hooks.events",
       "kind": "component",
       "name": "Hook scripts",
@@ -1004,7 +1033,7 @@
       ],
       "role": "Exposes the model to Claude Code as tools",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "043f4ff032956d38a6edd58e4ebf6a2664948432",
@@ -1073,7 +1102,7 @@
       ],
       "role": "Serves the web app and runs background jobs",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "be868991516cec574accbe7680c734add14fab28",
@@ -1089,7 +1118,7 @@
       ],
       "role": "Fetches the model and live updates from the daemon",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "be868991516cec574accbe7680c734add14fab28",
@@ -1111,7 +1140,7 @@
       ],
       "role": "The map, today, ledger and ask screens",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "changedAt": "be868991516cec574accbe7680c734add14fab28",
@@ -1130,7 +1159,7 @@
       ],
       "role": "Diagram, flags, quiz, predictions and labels shown on the pages",
       "source": "agent",
-      "sync": "ok"
+      "sync": "stale"
     },
     {
       "blastRadius": 6,
@@ -1275,8 +1304,17 @@
       "reversibility": "easy",
       "source": "agent",
       "sync": "unverified"
+    },
+    {
+      "blastRadius": 6,
+      "id": "d-017",
+      "kind": "decision",
+      "name": "How Claude keeps the developer caught up at milestones",
+      "reversibility": "easy",
+      "source": "agent",
+      "sync": "unverified"
     }
   ],
-  "revision": 30,
+  "revision": 32,
   "version": 2
 }

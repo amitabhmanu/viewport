@@ -306,6 +306,21 @@ export const Decision = z
 export type Decision = z.infer<typeof Decision>;
 export type DecisionInput = z.input<typeof Decision>;
 
+/** Catch-up gates: Claude pauses at milestones until the developer shows they follow the work (D-017). */
+export const GateSettings = z.object({
+  /** On unless the developer switches it off. */
+  enabled: z.boolean().default(true),
+  /** A milestone: this many new decisions since the last gate... */
+  decisions: z.number().int().positive().default(3),
+  /** ...or this many components touched. */
+  components: z.number().int().positive().default(4),
+  /** Familiarity each of the gate's subjects must reach to pass. */
+  threshold: z.number().gt(0).max(1).default(0.4),
+  /** At most this many subjects in one gate: the most salient of the work. */
+  subjects: z.number().int().positive().default(4),
+});
+export type GateSettings = z.infer<typeof GateSettings>;
+
 export const Config = z.object({
   version: z.literal(1),
   /** Globs for source files that components must claim. */
@@ -324,5 +339,6 @@ export const Config = z.object({
       tsconfig: z.string().min(1).default("tsconfig.json"),
     })
     .default({ tsconfig: "tsconfig.json" }),
+  gates: GateSettings.prefault({}),
 });
 export type Config = z.infer<typeof Config>;

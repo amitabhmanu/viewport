@@ -106,6 +106,17 @@ export const MIGRATIONS: readonly string[] = [
   );
   ALTER TABLE quiz_items ADD COLUMN stretch INTEGER NOT NULL DEFAULT 0;
   `,
+  `
+  CREATE TABLE gates (
+    id INTEGER PRIMARY KEY,
+    opened_at TEXT NOT NULL,
+    session TEXT,
+    subjects TEXT NOT NULL,
+    closed_at TEXT,
+    outcome TEXT CHECK (outcome IN ('passed', 'skipped', 'released'))
+  );
+  ALTER TABLE quiz_items ADD COLUMN gate_id INTEGER REFERENCES gates(id);
+  `,
 ];
 
 /** Opens (creating if needed) state.db in WAL mode and applies pending migrations. */

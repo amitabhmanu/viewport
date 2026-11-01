@@ -6,6 +6,14 @@ import {
   type Model,
   VIEWPORT_DIR,
   applyReport,
+  GATE_GRACE_EDITS,
+  type Gate,
+  checkMilestone,
+  currentGate,
+  editsSinceGate,
+  gateProgress,
+  gatesOff,
+  hasOpenGate,
   coverage,
   dailyDigest,
   digestLine,
@@ -28,7 +36,7 @@ import {
   writeModel,
   writeModelFromAgent,
 } from "@viewport/core";
-import { isCurrent, isHealthy, readLock, spawnDaemon, stopDaemon } from "@viewport/viewportd";
+import { isCurrent, isHealthy, readLock, spawnDaemon, stopDaemon, viewerUrl } from "@viewport/viewportd";
 
 /** The fields of Claude Code's hook input that these hooks read. */
 export interface HookInput {
@@ -39,6 +47,8 @@ export interface HookInput {
   tool_input?: { file_path?: string };
   stop_hook_active?: boolean;
   agent_type?: string;
+  /** UserPromptSubmit: what the developer typed. */
+  prompt?: string;
 }
 
 /** What a hook prints: Claude Code's JSON output, or nothing. */
@@ -92,6 +102,7 @@ export async function sessionStart(root: string): Promise<HookOutput> {
   const digest = digestLine(dailyDigest(state, model, ledger, familiarityScores(state)));
   const showDigest = digest !== undefined && takeDigestTurn(state);
   const jobs = jobProblem(jobHealth(state));
+  const gateOpen = hasOpenGate(state);
   state.close();
 
   const lines = ["Viewport keeps a model of this system in .viewport/ for the developer, who reads it in the viewer."];
@@ -102,7 +113,8 @@ export async function sessionStart(root: string): Promise<HookOutput> {
   if (flags.length > 0) lines.push(`The developer has ${flags.length} unanswered question${flags.length === 1 ? "" : "s"}: see flags_pending and answer with flags_resolve.`);
   lines.push(DECISION_RULE);
   // Also for the developer only: Claude can't fix the developer's environment.
-  const message = [jobs, showDigest ? digest : undefined].filter((m) => m !== undefined).join("\n");
+  const gate = gateOpen ? "Viewport: a catch-up gate is open. Claude carries on once you catch up in the viewer's Today tab (/viewport:open), or run /viewport:gates skip." : undefined;
+  const message = [gate, jobs, showDigest ? digest : undefined].filter((m) => m !== undefined).join("\n");
   return { ...context("SessionStart", lines.join("\n")), ...(message !== "" ? { systemMessage: message } : {}) };
 }
 
@@ -159,6 +171,11 @@ export async function postToolUse(root: string, input: HookInput): Promise<HookO
     }
     const flags = deliverFlags(state);
     for (const f of flags) notes.push(`The developer flagged ${f.subject} (flag ${f.id}): "${f.text}". The developer is waiting: answer it with flags_resolve before your next edit.`);
+    if (!gatesOff(config.gates)) {
+      const ledger = await readLedger(paths.ledger);
+      const gate = checkMilestone(state, model, ledger, config.gates, input.session_id);
+      if (gate !== undefined) notes.push(milestoneNote(gate));
+    }
     return notes.length > 0 ? context("PostToolUse", notes.join("\n")) : undefined;
   } finally {
     recordEdit(state, file, input);
@@ -216,7 +233,109 @@ export async function stop(root: string, input: HookInput): Promise<HookOutput> 
   }
   if (lines.length > 0) return { decision: "block", reason: lines.join("\n") };
   await queueExplanations(root);
-  return undefined;
+  const gate = await gateAtStop(root, input);
+  return gate !== undefined ? { systemMessage: await gateNotice(root, gate) } : undefined;
+}
+
+/** At the end of a turn with the model in step: the gate a milestone opens now, or one still open. */
+async function gateAtStop(root: string, input: HookInput): Promise<Gate | undefined> {
+  const paths = viewportPaths(root);
+  const config = await readConfig(paths.config);
+  if (gatesOff(config.gates)) return undefined;
+  const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+  const state = openState(paths.stateDb);
+  try {
+    const open = currentGate(state, model, ledger, config.gates);
+    if (open !== undefined && open.closedAt === undefined) return open;
+    return checkMilestone(state, model, ledger, config.gates, input.session_id);
+  } finally {
+    state.close();
+  }
+}
+
+function subjectList(gate: Gate): string {
+  return gate.subjects
+    .filter((s) => !s.met)
+    .map((s) => `${s.id} (${s.name})`)
+    .join("; ");
+}
+
+/** What Claude is told when a milestone is reached mid-turn. */
+function milestoneNote(gate: Gate): string {
+  return [
+    `Viewport catch-up gate: this is a milestone, and the developer has switched on gates so they keep up with the work. They will catch up on ${subjectList(gate)} before you carry on.`,
+    `Finish only what keeps the code working (at most ${GATE_GRACE_EDITS} more edits), bring the model up to date, then end your turn with a short summary of what you built and why, and tell the developer to catch up in the viewer's Today tab. Do not start new work, and do not edit files through the shell to get round the pause.`,
+  ].join(" ");
+}
+
+/** What the developer sees when Claude is paused: what to catch up on, where, and how to opt out. */
+async function gateNotice(root: string, gate: Gate): Promise<string> {
+  const lock = await readLock(root).catch(() => undefined);
+  const where = lock !== undefined ? `the viewer's Today tab: ${viewerUrl(lock)}` : "the viewer's Today tab (/viewport:open)";
+  return [
+    `Viewport: Claude is paused at a milestone until you catch up on the work so far (${gateProgress(gate)}).`,
+    `Answer the catch-up questions in ${where}`,
+    ...gate.subjects.filter((s) => !s.met).map((s) => `  - ${s.id} ${s.name}${s.grading ? " (grading your answer)" : ""}`),
+    "Skip this one with /viewport:gates skip, or switch gates off with /viewport:gates off.",
+  ].join("\n");
+}
+
+function deny(reason: string): HookOutput {
+  return { hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: reason } };
+}
+
+/**
+ * Before each edit: while a catch-up gate is open, refuse edits to the code, after a
+ * few that let Claude finish what it had in hand when the gate opened. Edits to
+ * .viewport/ always go through, so Claude can still bring the model up to date.
+ */
+export async function preToolUse(root: string, input: HookInput): Promise<HookOutput> {
+  if (!EDIT_TOOLS.has(input.tool_name ?? "") || input.tool_input?.file_path === undefined) return undefined;
+  const file = repoPath(root, input.tool_input.file_path);
+  if (file === undefined || file.startsWith(`${VIEWPORT_DIR}/`)) return undefined;
+  const paths = viewportPaths(root);
+  const state = openState(paths.stateDb);
+  try {
+    if (!hasOpenGate(state)) return undefined;
+    const config = await readConfig(paths.config);
+    if (gatesOff(config.gates)) return undefined;
+    const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+    const gate = currentGate(state, model, ledger, config.gates);
+    if (gate === undefined || gate.closedAt !== undefined) return undefined;
+    if (gate.session === input.session_id && editsSinceGate(state, gate) < GATE_GRACE_EDITS) return undefined;
+    return deny(
+      `Viewport catch-up gate: the developer is catching up on ${subjectList(gate)} before work continues (${gateProgress(gate)}). Make no more edits. End your turn with a short summary of the work so far and tell the developer to catch up in the viewer's Today tab.`,
+    );
+  } finally {
+    state.close();
+  }
+}
+
+/**
+ * When the developer sends a prompt while a gate is open: hold it until they catch up.
+ * Viewport's own commands always go through, so /viewport:gates skip or off is never locked out.
+ * Once the gate passes, Claude is told the developer caught up, in one line.
+ */
+export async function userPromptSubmit(root: string, input: HookInput): Promise<HookOutput> {
+  if ((input.prompt ?? "").trimStart().startsWith("/viewport")) return undefined;
+  const paths = viewportPaths(root);
+  const state = openState(paths.stateDb);
+  let gate: Gate | undefined;
+  try {
+    if (!hasOpenGate(state)) return undefined;
+    const config = await readConfig(paths.config);
+    if (gatesOff(config.gates)) return undefined;
+    const [model, ledger] = await Promise.all([readModel(paths.model), readLedger(paths.ledger)]);
+    gate = currentGate(state, model, ledger, config.gates);
+  } finally {
+    state.close();
+  }
+  if (gate === undefined) return undefined;
+  if (gate.closedAt !== undefined) {
+    const what = gate.subjects.map((s) => s.id).join(", ");
+    return context("UserPromptSubmit", `The developer caught up on ${what || "the work so far"} at a Viewport gate (${gate.outcome}); carry on.`);
+  }
+  return { decision: "block", reason: await gateNotice(root, gate) };
 }
 
 /**

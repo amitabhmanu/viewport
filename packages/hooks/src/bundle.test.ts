@@ -48,6 +48,11 @@ describe("bundled hooks", () => {
     const blocked = await runBundle("stop", { session_id: "s", cwd: root });
     expect(JSON.parse(blocked.stdout)).toMatchObject({ decision: "block" });
 
+    const pre = await runBundle("pre-tool-use", { session_id: "s", cwd: root, tool_name: "Write", tool_input: { file_path: join(root, "src", "other", "extra.py") } });
+    expect(pre).toEqual({ stdout: "", stderr: "" });
+    const prompt = await runBundle("user-prompt-submit", { session_id: "s", cwd: root, prompt: "go on" });
+    expect(prompt).toEqual({ stdout: "", stderr: "" });
+
     const outside = await runBundle("stop", { session_id: "s", cwd: tmpdir() });
     expect(outside.stdout).toBe("");
   });

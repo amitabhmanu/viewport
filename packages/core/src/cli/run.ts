@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { ConfigMissingError, readConfig } from "../config-store.js";
+import { ConfigMissingError, readConfig, updateGateSettings } from "../config-store.js";
+import { currentGate, gateProgress, gatesOff, skipGate } from "../gates.js";
 import { readLedger } from "../ledger.js";
 import { readModel, serializeModel, writeModel } from "../model-store.js";
 import { viewportPaths } from "../paths.js";
@@ -38,6 +39,8 @@ Commands:
   query fails <id>             What breaks if a container, component, external or runtime fails
   query changes <id>           What code and tests a change to a process, step, rule,
                                assumption or entity touches
+  gates [status|on|off|skip]   Catch-up gates: show the open gate, switch gates on or off,
+                               or skip the open one
   stats [--days N]             Engagement numbers for the dogfood log (default: last 7 days)
 
 Options:
@@ -127,6 +130,40 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
         const graph = new ModelGraph(await readModel(paths.model));
         const result = runQuery(graph, sub, arg, values);
         io.out(JSON.stringify(result, null, 2));
+        return 0;
+      }
+      case "gates": {
+        const action = sub ?? "status";
+        if (!["status", "on", "off", "skip"].includes(action)) throw new QueryError(`unknown gates action '${action}'; use status, on, off or skip`);
+        let config = await readConfig(paths.config);
+        const db = openState(paths.stateDb);
+        try {
+          // Switching off also lets go of an open gate, so switching back on later does not bring an old one back.
+          const skipped = action === "off" || action === "skip" ? skipGate(db) : false;
+          if (action === "on" || action === "off") config = await updateGateSettings(paths.config, { enabled: action === "on" });
+          const model = await readModel(paths.model);
+          const ledger = await readLedger(paths.ledger);
+          const gate = currentGate(db, model, ledger, config.gates);
+          const open = gate !== undefined && gate.closedAt === undefined ? gate : undefined;
+          const off = gatesOff(config.gates);
+          print({ enabled: config.gates.enabled, active: !off, settings: config.gates, gate: open ?? null }, () => {
+            const s = config.gates;
+            const lines = [
+              off
+                ? `Catch-up gates are off${config.gates.enabled ? " for this run (VIEWPORT_NO_GATES is set)" : ""}. Turn them on with: viewport gates on`
+                : `Catch-up gates are on: Claude pauses after ${plural(s.decisions, "new decision")} or ${plural(s.components, "touched component")}, until each of up to ${s.subjects} of the work's parts reaches familiarity ${s.threshold}.`,
+            ];
+            if (action === "skip") lines.push(skipped ? "Skipped the open gate; Claude can carry on." : "No gate was open to skip.");
+            if (open !== undefined) {
+              lines.push(`Open gate since ${open.openedAt}: ${gateProgress(open)}.`);
+              for (const x of open.subjects) lines.push(`  ${x.met ? "[x]" : "[ ]"} ${x.id} ${x.name} (${x.familiarity.toFixed(2)})${x.grading ? " grading" : ""}`);
+              lines.push("Catch up in the viewer's Today tab (/viewport:open).");
+            } else if (!off) lines.push("No gate is open.");
+            return lines.join("\n");
+          });
+        } finally {
+          db.close();
+        }
         return 0;
       }
       case "stats": {

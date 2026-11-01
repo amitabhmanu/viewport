@@ -7,7 +7,7 @@ import { URL, fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const out = new URL("../../hooks/dist/", import.meta.url);
-const entries = ["session-start", "post-tool-use", "stop", "subagent-stop"];
+const entries = ["session-start", "pre-tool-use", "post-tool-use", "user-prompt-submit", "stop", "subagent-stop"];
 
 await rm(out, { recursive: true, force: true });
 await mkdir(out, { recursive: true });

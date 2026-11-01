@@ -27,6 +27,7 @@ const ALLOWED_TOOLS = ["Read", "Glob", "Grep", "Edit", "Write", "MultiEdit", "Ta
 
 // The harness runs its own daemon, with the worker on; the session must not start another.
 process.env.VIEWPORT_NO_DAEMON = "1";
+process.env.VIEWPORT_NO_GATES = "1";
 
 const { values } = parseArgs({
   options: {

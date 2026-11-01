@@ -1,10 +1,25 @@
 {
-  "description": "Viewport: keep the system model in step with the code and pass the developer's flags to Claude.",
+  "description": "Viewport: keep the system model in step with the code, pass the developer's flags to Claude, and pause at catch-up gates.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           { "type": "command", "command": "node --disable-warning=ExperimentalWarning \"${CLAUDE_PLUGIN_ROOT}/hooks/dist/session-start.mjs\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "node --disable-warning=ExperimentalWarning \"${CLAUDE_PLUGIN_ROOT}/hooks/dist/user-prompt-submit.mjs\"", "timeout": 10 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "node --disable-warning=ExperimentalWarning \"${CLAUDE_PLUGIN_ROOT}/hooks/dist/pre-tool-use.mjs\"", "timeout": 10 }
         ]
       }
     ],

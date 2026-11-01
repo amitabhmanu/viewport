@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { parseFile } from "./fsutil.js";
-import { Config } from "./schema.js";
+import { parseFile, stableStringify, writeFileAtomic } from "./fsutil.js";
+import { Config, type GateSettings } from "./schema.js";
 
 export class ConfigMissingError extends Error {}
 
@@ -15,4 +15,17 @@ export async function readConfig(path: string): Promise<Config> {
     throw err;
   }
   return parseFile(Config, text, path);
+}
+
+/**
+ * Changes the catch-up gate settings in config.json, keeping everything else as written
+ * (defaults the file leaves out stay out). Returns the config as read back.
+ */
+export async function updateGateSettings(path: string, change: Partial<GateSettings>): Promise<Config> {
+  const raw = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+  const gates = { ...((raw.gates as Record<string, unknown> | undefined) ?? {}), ...change };
+  const next = { ...raw, gates };
+  parseFile(Config, JSON.stringify(next), path);
+  await writeFileAtomic(path, stableStringify(next));
+  return readConfig(path);
 }
